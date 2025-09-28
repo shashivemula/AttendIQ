@@ -605,17 +605,17 @@
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const email = document.getElementById('email').value;
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             
             // Simple validation
             if (!email || !password) {
-                alert('Please fill in all fields');
+                showLoginMessage('Please fill in all fields', 'error');
                 return;
             }
 
             if (!selectedUserType) {
-                alert('Please select user type');
+                showLoginMessage('Please select user type', 'error');
                 return;
             }
             
@@ -625,7 +625,7 @@
             // If this email exists for a different user type, prevent login
             for (const userType in storedEmails) {
                 if (userType !== selectedUserType && storedEmails[userType].includes(email)) {
-                    alert(`This email is already registered as a ${userType}. Student and faculty emails cannot be the same.`);
+                    showLoginMessage(`This email is already registered as a ${userType}. Student and faculty emails cannot be the same.`, 'error');
                     return;
                 }
             }
@@ -652,26 +652,53 @@
                 const endpoint = selectedUserType === 'student' ? '/api/student/login' : '/api/faculty/login';
                 const userIdField = selectedUserType === 'student' ? 'studentId' : 'facultyId';
                 
+                // Ensure API_BASE_URL is set
+                if (!window.API_BASE_URL) {
+                    // If not set, try to get from config
+                    const config = window.AttendIQConfig || {};
+                    const env = config.getEnvironment ? config.getEnvironment() : {};
+                    window.API_BASE_URL = env.apiBaseUrl || window.location.origin;
+                }
+                
                 // Make API call using dynamic base URL
-                const apiUrl = window.API_BASE_URL + endpoint;
+                const apiUrl = window.API_BASE_URL.replace(/\/$/, '') + endpoint;
+                
+                console.log('Attempting login to:', apiUrl); // Debug log
+                
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
+                    credentials: 'include', // Important for cookies/sessions
                     body: JSON.stringify({
-                        [userIdField]: email, // Using email as ID for now
+                        [userIdField]: email,
                         password: password
                     })
                 });
                 
-                const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    console.error('Failed to parse response:', parseError);
+                    throw new Error('Invalid response from server');
+                }
+                
+                console.log('Login response:', { status: response.status, data }); // Debug log
                 
                 if (response.ok && data.success) {
                     // Store token and user info
-                    localStorage.setItem('authToken', data.token);
+                    if (data.token) {
+                        localStorage.setItem('authToken', data.token);
+                    }
                     localStorage.setItem('userType', selectedUserType);
-                    localStorage.setItem('userData', JSON.stringify(selectedUserType === 'student' ? data.student : data.faculty));
+                    
+                    const userData = selectedUserType === 'student' ? data.student : data.faculty;
+                    if (userData) {
+                        localStorage.setItem('userData', JSON.stringify(userData));
+                    }
                     
                     // Store email in sessionStorage for attendance tracking (backward compatibility)
                     sessionStorage.setItem('userEmail', email);
@@ -694,20 +721,22 @@
                                     window.location.href = 'faculty-dashboard.html';
                                     break;
                                 default:
-                                    window.location.href = 'dashboard.html';
+                                    window.location.href = 'index.html';
                             }
                         }
-                    }, 1500);
+                    }, 1000);
                     
                 } else {
-                    showLoginMessage(data.error || 'Login failed. Please check your credentials.', 'error');
+                    const errorMessage = data.error || (data.message || 'Login failed. Please check your credentials.');
+                    showLoginMessage(errorMessage, 'error');
                     loginBtn.innerHTML = originalText;
                     loginBtn.disabled = false;
                 }
                 
             } catch (error) {
                 console.error('Login error:', error);
-                showLoginMessage('Connection error. Please try again.', 'error');
+                const errorMsg = error.message || 'Connection error. Please check your network and try again.';
+                showLoginMessage(errorMsg, 'error');
                 loginBtn.innerHTML = originalText;
                 loginBtn.disabled = false;
             }
@@ -777,7 +806,7 @@
     </script>
 
     <!-- Load config for environment detection -->
-    <script src="config.js"></script>
+    <script src="js/config.js"></script>
 </body>
 </html>
 

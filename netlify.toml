@@ -1,0 +1,15 @@
+[build]
+  command = "npm install && npm run build"
+  publish = "dist"
+
+[dev]
+  framework = "#custom"
+  command = "node server.js"
+  targetPort = 5000
+  port = 3000
+  publish = "."
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

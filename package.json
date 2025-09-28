@@ -4,7 +4,7 @@
   "description": "AttendIQ Smart Attendance Management Backend",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "nodemon server.js",
     "dev": "nodemon server.js",
     "local": "node server.js",
     "build": "echo 'No build step required for this project'",

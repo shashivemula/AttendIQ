@@ -25,12 +25,12 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-        file.mimetype === 'application/vnd.ms-excel') {
+    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.ms-excel') {
       cb(null, true);
     } else {
       cb(new Error('Only Excel files are allowed'));
@@ -52,33 +52,33 @@ const corsOptions = {
       console.log('Allowing request with no origin in development');
       return callback(null, true);
     }
-    
+
     // List of allowed origins
     const allowedOrigins = [
       // Local development
       /^https?:\/\/localhost(:\d+)?$/,  // localhost with any port
       /^https?:\/\/127\.0\.0\.1(:\d+)?$/,  // 127.0.0.1 with any port
       /^https?:\/\/192\.168\.0\.105(:\d+)?$/,  // Your local IP with any port
-      
+
       // Replit environment
-      isReplit && process.env.REPLIT_DEV_DOMAIN 
+      isReplit && process.env.REPLIT_DEV_DOMAIN
         ? new RegExp(`^https?:\/\/${process.env.REPLIT_DEV_DOMAIN.replace(/\./g, '\\\\.')}$`)
         : null,
-      
+
       // Additional origins from environment
       ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : [])
     ].filter(Boolean); // Remove any null/undefined values
-    
+
     // Check if origin is allowed
-    if (!origin || allowedOrigins.some(pattern => 
-      typeof pattern === 'string' 
-        ? origin === pattern 
+    if (!origin || allowedOrigins.some(pattern =>
+      typeof pattern === 'string'
+        ? origin === pattern
         : pattern.test(origin)
     )) {
       console.log(`✅ Allowed CORS request from: ${origin || 'no origin'}`);
       return callback(null, true);
     }
-    
+
     console.warn(`❌ Blocked CORS request from: ${origin}`);
     callback(new Error('Not allowed by CORS'));
   },
@@ -116,19 +116,19 @@ if (process.env.ALLOWED_ORIGINS) {
 // Configure Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
-    origin: function(origin, callback) {
+    origin: function (origin, callback) {
       // Allow all origins in development
       if (!isProduction) {
         return callback(null, true);
       }
-      
+
       // In production, only allow specific origins
       const allowedOrigins = [
         // Add your production domains here
         /^https?:\/\/yourdomain\.com$/,
         /^https?:\/\/www\.yourdomain\.com$/
       ];
-      
+
       if (!origin || allowedOrigins.some(regex => regex.test(origin))) {
         callback(null, true);
       } else {
@@ -196,29 +196,29 @@ const db = new sqlite3.Database('attendiq.db', (err) => {
 // CRITICAL: Database migration for existing deployments
 function migrateExistingDatabase() {
   console.log('🔄 Checking for required database migrations...');
-  
+
   // Check if sessions table has geo columns
   db.all("PRAGMA table_info(sessions)", (err, columns) => {
     if (err) {
       console.error('Migration check error:', err);
       return;
     }
-    
+
     const columnNames = columns.map(col => col.name);
     const requiredColumns = ['latitude', 'longitude', 'radius_meters', 'geo_required'];
     const missingColumns = requiredColumns.filter(col => !columnNames.includes(col));
-    
+
     if (missingColumns.length > 0) {
       console.log(`🚧 Adding missing columns to sessions table: ${missingColumns.join(', ')}`);
-      
+
       // Add missing columns one by one
       const alterQueries = [
         'ALTER TABLE sessions ADD COLUMN latitude REAL',
-        'ALTER TABLE sessions ADD COLUMN longitude REAL', 
+        'ALTER TABLE sessions ADD COLUMN longitude REAL',
         'ALTER TABLE sessions ADD COLUMN radius_meters INTEGER DEFAULT 100',
         'ALTER TABLE sessions ADD COLUMN geo_required BOOLEAN DEFAULT 1'
       ];
-      
+
       missingColumns.forEach((col, index) => {
         db.run(alterQueries[requiredColumns.indexOf(col)], (err) => {
           if (err && !err.message.includes('duplicate column name')) {
@@ -328,10 +328,10 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const Δφ = (lat2 - lat1) * Math.PI / 180;
   const Δλ = (lon2 - lon1) * Math.PI / 180;
 
-  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-          Math.cos(φ1) * Math.cos(φ2) *
-          Math.sin(Δλ/2) * Math.sin(Δλ/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c; // Distance in meters
 }
@@ -395,7 +395,7 @@ function requireFaculty(req, res, next) {
 // 🔒 SECURITY: Authorization middleware for faculty endpoints
 function authorizeOwnResource(req, res, next) {
   const requestedFacultyId = req.params.facultyId || req.body.facultyId;
-  
+
   if (requestedFacultyId && requestedFacultyId !== req.user.userId) {
     return res.status(403).json({ error: 'Access denied: You can only access your own data' });
   }
@@ -410,14 +410,14 @@ app.post('/api/student/login', (req, res) => {
 
   // Accept either studentId or email
   const loginField = studentId || email;
-  
+
   if (!loginField || !password) {
     return res.status(400).json({ error: 'Student ID/email and password are required' });
   }
 
   // Search by email first, then by student_id if no email match
-  const query = loginField.includes('@') ? 
-    'SELECT * FROM students WHERE email = ?' : 
+  const query = loginField.includes('@') ?
+    'SELECT * FROM students WHERE email = ?' :
     'SELECT * FROM students WHERE student_id = ?';
 
   db.get(query, [loginField], (err, student) => {
@@ -471,8 +471,8 @@ app.post('/api/faculty/login', (req, res) => {
   }
 
   // Search by email first, then by faculty_id if no email match
-  const query = loginField.includes('@') ? 
-    'SELECT * FROM faculty WHERE email = ?' : 
+  const query = loginField.includes('@') ?
+    'SELECT * FROM faculty WHERE email = ?' :
     'SELECT * FROM faculty WHERE faculty_id = ?';
 
   db.get(query, [loginField], (err, faculty) => {
@@ -496,10 +496,15 @@ app.post('/api/faculty/login', (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      const token = jwt.sign({
-        userId: faculty.faculty_id,
-        type: 'faculty'
-      }, JWT_SECRET, { expiresIn: '24h' });
+      // Create a consistent token payload using the 'faculty' object
+      const token = jwt.sign(
+        {
+          userId: faculty.faculty_id, // Use faculty's unique ID
+          type: 'faculty'             // Specify the user type
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
 
       res.json({
         success: true,
@@ -543,11 +548,11 @@ app.post('/api/faculty/upload-students', authenticateToken, requireFaculty, uplo
 
       try {
         const passwordHash = await bcrypt.hash(password, 10);
-        
+
         db.run(
           'INSERT OR REPLACE INTO students (student_id, name, email, password_hash) VALUES (?, ?, ?, ?)',
           [student_id, name, email, passwordHash],
-          function(err) {
+          function (err) {
             if (err) {
               errors.push(`Row ${index + 2}: ${err.message}`);
             } else {
@@ -589,16 +594,16 @@ app.post('/api/faculty/generate-qr', authenticateToken, requireFaculty, (req, re
 
   // Validate geolocation parameters if geo is required
   const useGeolocation = !!geoRequired && location && location.latitude && location.longitude;
-  
+
   if (useGeolocation && (!location.latitude || !location.longitude)) {
-    return res.status(400).json({ 
-      error: 'Latitude and longitude are required for geo-fenced sessions' 
+    return res.status(400).json({
+      error: 'Latitude and longitude are required for geo-fenced sessions'
     });
   }
 
   const sessionId = uuidv4();
   const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
-  
+
   const sessionData = {
     sessionId,
     facultyId,
@@ -621,18 +626,18 @@ app.post('/api/faculty/generate-qr', authenticateToken, requireFaculty, (req, re
       latitude, longitude, radius_meters, geo_required
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      sessionId, 
-      facultyId, 
-      subject, 
-      room || 'Classroom', 
-      JSON.stringify(sessionData), 
+      sessionId,
+      facultyId,
+      subject,
+      room || 'Classroom',
+      JSON.stringify(sessionData),
       expiresAt.toISOString(),
       useGeolocation ? parseFloat(location.latitude) : null,
       useGeolocation ? parseFloat(location.longitude) : null,
       useGeolocation ? (parseInt(location.maxDistance) || 100) : null,
       useGeolocation ? 1 : 0
     ],
-    function(err) {
+    function (err) {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to create session', details: err.message });
@@ -641,7 +646,7 @@ app.post('/api/faculty/generate-qr', authenticateToken, requireFaculty, (req, re
       // Generate QR code with dynamic URL based on environment
       let checkinUrl;
       const isReplit = !!process.env.REPLIT_DEV_DOMAIN;
-      
+
       // Smart environment detection for QR code URLs
       if (isReplit) {
         // For Replit deployment
@@ -651,7 +656,7 @@ app.post('/api/faculty/generate-qr', authenticateToken, requireFaculty, (req, re
         const os = require('os');
         const networkInterfaces = os.networkInterfaces();
         let localIp = 'localhost';
-        
+
         // Find the first non-internal IPv4 address
         Object.keys(networkInterfaces).forEach(iface => {
           networkInterfaces[iface].forEach(addr => {
@@ -660,7 +665,7 @@ app.post('/api/faculty/generate-qr', authenticateToken, requireFaculty, (req, re
             }
           });
         });
-        
+
         // Serve check-in page directly from backend (port 5000) to ensure mobile access without Live Server
         checkinUrl = `http://${localIp}:5000/checkin.html?session=${sessionId}&subject=${encodeURIComponent(subject)}&room=${encodeURIComponent(room || 'Classroom')}`;
         console.log(`📱 Mobile check-in URL: ${checkinUrl}`);
@@ -681,10 +686,10 @@ app.post('/api/faculty/generate-qr', authenticateToken, requireFaculty, (req, re
       }, (err, qrCodeURL) => {
         if (err) {
           console.error('QR Code generation error:', err);
-          return res.status(500).json({ 
-            success: false, 
+          return res.status(500).json({
+            success: false,
             error: 'Failed to generate QR code',
-            details: err.message 
+            details: err.message
           });
         }
 
@@ -747,17 +752,17 @@ app.post('/api/faculty/regenerate-qr/:sessionId', authenticateToken, requireFacu
   db.get('SELECT * FROM sessions WHERE session_id = ? AND faculty_id = ?', [sessionId, facultyId], (err, session) => {
     if (err) {
       console.error('Database error:', err);
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
         error: 'Database error',
-        details: err.message 
+        details: err.message
       });
     }
 
     if (!session) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Session not found or unauthorized' 
+        error: 'Session not found or unauthorized'
       });
     }
 
@@ -765,16 +770,16 @@ app.post('/api/faculty/regenerate-qr/:sessionId', authenticateToken, requireFacu
     const now = new Date();
     const expiresAt = new Date(session.expires_at);
     if (now > expiresAt) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Cannot regenerate QR for expired session' 
+        error: 'Cannot regenerate QR for expired session'
       });
     }
 
     // Generate new expiration time (extend by 2 minutes from now)
     const newExpiresAt = new Date(now.getTime() + 2 * 60 * 1000);
     const sessionData = JSON.parse(session.qr_code_data);
-    
+
     // Update session data with new expiration
     sessionData.expiresAt = newExpiresAt.toISOString();
 
@@ -782,20 +787,20 @@ app.post('/api/faculty/regenerate-qr/:sessionId', authenticateToken, requireFacu
     db.run(
       'UPDATE sessions SET expires_at = ?, qr_code_data = ? WHERE session_id = ?',
       [newExpiresAt.toISOString(), JSON.stringify(sessionData), sessionId],
-      function(err) {
+      function (err) {
         if (err) {
           console.error('Database update error:', err);
-          return res.status(500).json({ 
+          return res.status(500).json({
             success: false,
             error: 'Failed to update session',
-            details: err.message 
+            details: err.message
           });
         }
 
         // Generate new QR code URL with dynamic IP detection
         let checkinUrl;
         const isReplit = !!process.env.REPLIT_DEV_DOMAIN;
-        
+
         if (isReplit) {
           checkinUrl = `https://${process.env.REPLIT_DEV_DOMAIN}/checkin.html?session=${sessionId}`;
         } else if (process.env.NODE_ENV === 'development') {
@@ -803,7 +808,7 @@ app.post('/api/faculty/regenerate-qr/:sessionId', authenticateToken, requireFacu
           const os = require('os');
           const networkInterfaces = os.networkInterfaces();
           let localIp = 'localhost';
-          
+
           // Find the first non-internal IPv4 address
           Object.keys(networkInterfaces).forEach(iface => {
             networkInterfaces[iface].forEach(addr => {
@@ -812,7 +817,7 @@ app.post('/api/faculty/regenerate-qr/:sessionId', authenticateToken, requireFacu
               }
             });
           });
-          
+
           checkinUrl = `http://${localIp}:5000/checkin.html?session=${sessionId}&subject=${encodeURIComponent(session.subject)}&room=${encodeURIComponent(session.room || 'Classroom')}`;
           console.log(`🔄 Regenerated mobile check-in URL: ${checkinUrl}`);
         } else {
@@ -831,10 +836,10 @@ app.post('/api/faculty/regenerate-qr/:sessionId', authenticateToken, requireFacu
         }, (err, qrCodeURL) => {
           if (err) {
             console.error('QR generation error:', err);
-            return res.status(500).json({ 
+            return res.status(500).json({
               success: false,
               error: 'Failed to generate QR code',
-              details: err.message 
+              details: err.message
             });
           }
 
@@ -881,7 +886,7 @@ app.post('/api/faculty/regenerate-qr/:sessionId', authenticateToken, requireFacu
 
           // Send response
           res.json(response);
-          
+
           // Emit to faculty dashboard for real-time updates
           io.emit('qr_regenerated', {
             sessionId,
@@ -908,20 +913,20 @@ function checkRateLimit(studentId, sessionId, res) {
   const now = Date.now();
   const limitKey = `${studentId}-${sessionId}`; // Per-student, per-session
   const attempts = attendanceAttempts.get(limitKey) || { count: 0, lastAttempt: 0 };
-  
+
   // Reset if window expired
   if (now - attempts.lastAttempt > RATE_LIMIT_WINDOW) {
     attempts.count = 0;
   }
-  
+
   attempts.count++;
   attempts.lastAttempt = now;
   attendanceAttempts.set(limitKey, attempts);
-  
+
   if (attempts.count > MAX_ATTEMPTS_PER_STUDENT) {
-    res.status(429).json({ 
+    res.status(429).json({
       error: 'Too many attendance attempts. Please wait before trying again.',
-      retryAfter: RATE_LIMIT_WINDOW / 1000 
+      retryAfter: RATE_LIMIT_WINDOW / 1000
     });
     return false;
   }
@@ -977,8 +982,8 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
       console.warn('⚠️  Development mode: bypassing geofence validation (set DEV_GEOFENCE_OPTIONAL=0 to enforce).');
     } else {
       if (!location || !location.latitude || !location.longitude) {
-        return res.status(400).json({ 
-          error: 'Location access is required for this session. Please enable location services and try again.' 
+        return res.status(400).json({
+          error: 'Location access is required for this session. Please enable location services and try again.'
         });
       }
 
@@ -995,7 +1000,7 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
       );
 
       if (distance > requiredRadius) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           error: `You are ${Math.round(distance)}m away from the class location. You must be within ${requiredRadius}m to mark attendance.`,
           distance: Math.round(distance),
           requiredRadius: requiredRadius,
@@ -1043,14 +1048,14 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
       const sessionStart = new Date(session.expiresAt.getTime() - 2 * 60 * 1000); // 2 minutes before expiry
       const timeDiff = (scanTime - sessionStart) / 1000; // seconds
       const status = timeDiff <= 60 ? 'present' : 'late'; // First minute = present, after = late
-      
+
       console.log(`🔒 Server-side status calculation: ${status} (${Math.round(timeDiff)}s after session start)`);
 
       // Record attendance with server timestamp
       db.run(
         'INSERT OR REPLACE INTO attendance (session_id, student_id, status, timestamp) VALUES (?, ?, ?, ?)',
         [sessionId, student.student_id, status, serverTimestamp],
-        function(err) {
+        function (err) {
           if (err) {
             return res.status(500).json({ error: 'Failed to record attendance' });
           }
@@ -1079,13 +1084,13 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
             scanTime: new Date().toLocaleTimeString(),
             timeDifference: timeDiff
           };
-          
+
           // Emit to all connected faculty dashboards
           io.emit('attendance_marked', realTimeData);
-          
+
           // 🔒 FIXED: Emit to specific faculty room using consistent facultyId format
           io.to(`faculty_${session.facultyId}`).emit('attendance_update', realTimeData);
-          
+
           console.log(`📡 Real-time update sent: ${student.name} marked ${status}`);
 
           console.log(`✅ Attendance marked: ${student.name} (${student.email}) - ${status} in ${session.subject}`);
@@ -1126,22 +1131,22 @@ app.get('/api/faculty/attendance/:sessionId', (req, res) => {
 // 🚀 CSV Export Attendance Data
 app.get('/api/faculty/export-attendance/:sessionId', authenticateToken, requireFaculty, (req, res) => {
   const { sessionId } = req.params;
-  
+
   // 🔒 SECURITY: First verify that the faculty owns this session
   db.get('SELECT faculty_id FROM sessions WHERE session_id = ?', [sessionId], (err, session) => {
     if (err) {
       console.error('Session verification error:', err);
       return res.status(500).json({ error: 'Database error during authorization' });
     }
-    
+
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
-    
+
     if (session.faculty_id !== req.user.userId) {
       return res.status(403).json({ error: 'Access denied: You can only export your own sessions' });
     }
-    
+
     // 🔒 SECURITY FIX: Only export students who actually attended this session
     const query = `
       SELECT 
@@ -1183,7 +1188,7 @@ app.get('/api/faculty/export-attendance/:sessionId', authenticateToken, requireF
         // Configure CSV parser with custom options
         const fields = [
           'Student ID',
-          'Name', 
+          'Name',
           'Email',
           'Class/Subject',
           'Status',
@@ -1191,35 +1196,35 @@ app.get('/api/faculty/export-attendance/:sessionId', authenticateToken, requireF
           'Room',
           'Session Date'
         ];
-        
+
         const opts = {
           fields,
           delimiter: ',',
           header: true,
           encoding: 'utf8'
         };
-        
+
         const parser = new Parser(opts);
         const csv = parser.parse(results);
-        
+
         // 🔒 SECURITY: Sanitize filename to prevent directory traversal
         const sessionInfo = results[0];
         const sanitizedSubject = sessionInfo['Class/Subject'].replace(/[^a-zA-Z0-9_-]/g, '_');
         const sanitizedDate = sessionInfo['Session Date'].replace(/[^0-9]/g, '');
         const filename = `attendance_${sanitizedSubject}_${sanitizedDate}.csv`;
-        
+
         // Set headers for file download
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
-        
+
         // Send CSV data
         res.send(csv);
-        
+
         console.log(`📊 Secure CSV Export completed: ${results.length} records exported for session ${sessionId} by faculty ${req.user.userId}`);
-        
+
       } catch (parseError) {
         console.error('CSV Parse Error:', parseError);
         return res.status(500).json({ error: 'Failed to generate CSV file' });
@@ -1231,7 +1236,7 @@ app.get('/api/faculty/export-attendance/:sessionId', authenticateToken, requireF
 // Export all sessions attendance data for faculty
 app.get('/api/faculty/export-all-attendance/:facultyId', authenticateToken, requireFaculty, authorizeOwnResource, (req, res) => {
   const { facultyId } = req.params;
-  
+
   // 🔒 SECURITY FIX: Only export students who actually attended this faculty's sessions
   const query = `
     SELECT 
@@ -1274,39 +1279,39 @@ app.get('/api/faculty/export-all-attendance/:facultyId', authenticateToken, requ
       const fields = [
         'Student ID',
         'Name',
-        'Email', 
+        'Email',
         'Class/Subject',
         'Status',
         'Timestamp',
         'Room',
         'Session Date'
       ];
-      
+
       const opts = {
         fields,
         delimiter: ',',
         header: true,
         encoding: 'utf8'
       };
-      
+
       const parser = new Parser(opts);
       const csv = parser.parse(results);
-      
+
       // 🔒 SECURITY: Sanitize filename to prevent directory traversal
       const sanitizedFacultyId = facultyId.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const sanitizedDate = new Date().toISOString().slice(0,10).replace(/[^0-9]/g, '');
+      const sanitizedDate = new Date().toISOString().slice(0, 10).replace(/[^0-9]/g, '');
       const filename = `all_attendance_faculty_${sanitizedFacultyId}_${sanitizedDate}.csv`;
-      
+
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      
+
       res.send(csv);
-      
+
       console.log(`📊 Secure All Sessions CSV Export completed: ${results.length} records exported for faculty ${facultyId} by authenticated user ${req.user.userId}`);
-      
+
     } catch (parseError) {
       console.error('All Sessions CSV Parse Error:', parseError);
       return res.status(500).json({ error: 'Failed to generate CSV file' });
@@ -1389,7 +1394,7 @@ io.on('connection', (socket) => {
 // Serve check-in success page
 app.get('/checkin-success/:sessionId/:studentId', (req, res) => {
   const { sessionId, studentId } = req.params;
-  
+
   // Get attendance details
   const query = `
     SELECT 
@@ -1567,13 +1572,13 @@ app.use((err, req, res, next) => {
 // Create default test users on startup
 function createDefaultUsers() {
   console.log('\n🔧 Creating default test users...');
-  
+
   // Create test faculty user
   const facultyPassword = bcrypt.hashSync('password123', 10);
   db.run(
     'INSERT OR IGNORE INTO faculty (faculty_id, name, email, password_hash) VALUES (?, ?, ?, ?)',
     ['faculty001', 'Dr. John Smith', 'faculty@test.com', facultyPassword],
-    function(err) {
+    function (err) {
       if (err) {
         console.log('Faculty user creation error:', err.message);
       } else if (this.changes > 0) {
@@ -1588,7 +1593,7 @@ function createDefaultUsers() {
   const studentPassword = bcrypt.hashSync('student123', 10);
   const testStudents = [
     ['STU001', 'Alice Johnson', 'alice@test.com'],
-    ['STU002', 'Smith Kumar', 'smith@test.com'], 
+    ['STU002', 'Smith Kumar', 'smith@test.com'],
     ['STU003', 'Krishnaraj Patel', 'krishnaraj@test.com'],
     ['STU004', 'Pratik Sharma', 'pratik@test.com'],
     ['STU005', 'Bob Wilson', 'bob@test.com'],
@@ -1601,7 +1606,7 @@ function createDefaultUsers() {
     db.run(
       'INSERT OR IGNORE INTO students (student_id, name, email, password_hash) VALUES (?, ?, ?, ?)',
       [studentId, name, email, studentPassword],
-      function(err) {
+      function (err) {
         if (err) {
           console.log(`Student creation error for ${email}:`, err.message);
         } else if (this.changes > 0) {
@@ -1625,7 +1630,7 @@ server.listen(PORT, '0.0.0.0', () => {
   // Enhanced environment detection for VS Code + Replit compatibility
   const isReplit = !!process.env.REPLIT_DEV_DOMAIN;
   const isLocal = !isReplit;
-  
+
   let domain, protocol;
   if (isReplit) {
     domain = process.env.REPLIT_DEV_DOMAIN;
@@ -1635,13 +1640,13 @@ server.listen(PORT, '0.0.0.0', () => {
     domain = `localhost:${PORT}`;
     protocol = 'http';
   }
-  
+
   console.log(`✅ AttendIQ Server running on port ${PORT}`);
   console.log(`🌐 Environment: ${isReplit ? 'Replit Cloud ☁️' : 'Local Development 💻'}`);
   console.log(`📱 Mobile access: ${protocol}://${domain}`);
   console.log(`📊 Faculty Dashboard: ${protocol}://${domain}/faculty-dashboard.html`);
   console.log(`🎓 Student Dashboard: ${protocol}://${domain}/student-dashboard.html`);
-  
+
   if (isLocal) {
     console.log(`\n🔧 VS Code Local Setup:`);
     console.log(`1. Run "npm start" to start this backend server (port ${PORT})`);
@@ -1649,11 +1654,11 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`3. Camera scanner works perfectly on localhost!`);
     console.log(`4. For mobile testing, use your computer's IP: http://[YOUR-IP]:${PORT}`);
   }
-  
+
   console.log('\n🔑 Test Credentials:');
   console.log('Faculty: faculty@test.com / password123');
   console.log('Students: alice@test.com / student123\n');
-  
+
   // Create default users after server starts
   setTimeout(createDefaultUsers, 1000);
 });

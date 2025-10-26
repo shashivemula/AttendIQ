@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Registration</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js"></script>
+</head>
+<body>
+  <div class="container" style="max-width:600px;margin:20px auto;text-align:center;">
+    <h2>Register Your Face</h2>
+    <p>Allow camera access, center your face, then click Register.</p>
+
+    <div style="position:relative;display:inline-block;">
+      <video id="video" autoplay muted playsinline style="width:100%;max-width:480px;border-radius:12px;border:1px solid #ccc;background:#000"></video>
+      <canvas id="overlay" style="position:absolute;left:0;top:0"></canvas>
+    </div>
+
+    <div id="status" style="margin:12px 0;color:#888;font-weight:bold;">Initializing...</div>
+    <div id="diag" style="font-size:11px;color:#aaa;white-space:pre-wrap;margin-bottom:8px;max-height:150px;overflow-y:auto;text-align:left;padding:8px;border:1px solid #333;background:#1a1a1a;"></div>
+
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button id="startBtn" class="header-btn" style="padding:10px 16px;" disabled>Start Camera</button>
+      <button id="captureBtn" class="header-btn" style="padding:10px 16px;" disabled>Register</button>
+      <button id="fallbackBtn" class="header-btn" style="padding:10px 16px;">Take Photo (Fallback)</button>
+      <button id="backBtn" class="header-btn" style="padding:10px 16px;">Back</button>
+    </div>
+    <input id="fileInput" type="file" accept="image/*" capture="user" style="display:none" />
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    let stream = null;
+    let modelsLoaded = false;
+    let isDrawing = false;
+    let modelLoadAttempted = false;
+
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const statusEl = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const backBtn = document.getElementById('backBtn');
+    const fallbackBtn = document.getElementById('fallbackBtn');
+    const fileInput = document.getElementById('fileInput');
+    const diagEl = document.getElementById('diag');
+
+    function log(msg) {
+      console.log(msg);
+      const timestamp = new Date().toLocaleTimeString();
+      diagEl.textContent += timestamp + ' - ' + msg + '\n';
+      diagEl.scrollTop = diagEl.scrollHeight;
+    }
+
+    function requiresSecureOrigin() {
+      const host = window.location.hostname;
+      const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.');
+      return window.location.protocol !== 'https:' && !isLocal;
+    }
+
+    // Polyfill for older browsers
+    function setupMediaDevices() {
+      if (!navigator.mediaDevices) {
+        navigator.mediaDevices = {};
+      }
+      
+      if (!navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia = function(constraints) {
+          const getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.getUserMedia;
+          
+          if (!getUserMedia) {
+            return Promise.reject(new Error('getUserMedia not supported in this browser'));
+          }
+          
+          return new Promise((resolve, reject) => {
+            getUserMedia.call(navigator, constraints, resolve, reject);
+          });
+        };
+      }
+    }
+
+    async function waitForFaceApi(timeoutMs = 15000) {
+      log('Waiting for face-api.js library...');
+      const start = Date.now();
+      while (typeof window.faceapi === 'undefined') {
+        if (Date.now() - start > timeoutMs) {
+          throw new Error('face-api.js failed to load');
+        }
+        await new Promise(r => setTimeout(r, 200));
+      }
+      log('✓ face-api.js loaded');
+    }
+
+    async function loadModels() {
+      if (modelLoadAttempted) {
+        log('Model load already attempted');
+        return;
+      }
+      modelLoadAttempted = true;
+      
+      try {
+        statusEl.textContent = 'Loading AI library...';
+        await waitForFaceApi();
+        
+        statusEl.textContent = 'Downloading models (30-60s on mobile)...';
+        
+        // Use working CDN path
+        const modelPath = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
+        log('Loading models from: ' + modelPath);
+        
+        const startTime = Date.now();
+        
+        try {
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(modelPath).then(() => log('✓ Face detector')),
+            faceapi.nets.faceLandmark68Net.loadFromUri(modelPath).then(() => log('✓ Landmarks')),
+            faceapi.nets.faceRecognitionNet.loadFromUri(modelPath).then(() => log('✓ Recognition')),
+          ]);
+          
+          const loadTime = ((Date.now() - startTime) / 1000).toFixed(1);
+          log('All models loaded in ' + loadTime + 's');
+          
+          modelsLoaded = true;
+          statusEl.textContent = '✓ Ready! Click Start Camera';
+          statusEl.style.color = '#4CAF50';
+          startBtn.disabled = false;
+        } catch (e) {
+          log('CDN failed, trying local path...');
+          const localPath = window.API_BASE_URL + '/js/weights/';
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(localPath),
+            faceapi.nets.faceLandmark68Net.loadFromUri(localPath),
+            faceapi.nets.faceRecognitionNet.loadFromUri(localPath),
+          ]);
+          modelsLoaded = true;
+          statusEl.textContent = '✓ Models loaded (local)';
+          startBtn.disabled = false;
+        }
+        
+      } catch (e) {
+        console.error('Model load error:', e);
+        log('ERROR: ' + (e.message || e));
+        statusEl.textContent = 'Model load failed. Check internet and refresh.';
+        statusEl.style.color = '#f44336';
+        startBtn.disabled = false;
+      }
+    }
+
+    async function startCamera() {
+      if (stream) {
+        log('Camera already active');
+        return;
+      }
+
+      try {
+        setupMediaDevices();
+        
+        log('Checking camera support...');
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Camera not supported in this browser. Try Chrome or Firefox.');
+        }
+        
+        log('Requesting camera access...');
+        statusEl.textContent = 'Requesting camera...';
+        
+        if (requiresSecureOrigin()) {
+          log('WARNING: HTTP detected - may block camera');
+        }
+        
+        const constraints = { 
+          video: { 
+            facingMode: 'user',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          },
+          audio: false
+        };
+        
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        log('✓ Camera permission granted');
+        video.srcObject = stream;
+        
+        await new Promise((resolve, reject) => {
+          video.onloadedmetadata = resolve;
+          video.onerror = reject;
+          setTimeout(() => reject(new Error('Video timeout')), 5000);
+        });
+        
+        await video.play();
+        
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+        
+        log('Camera started: ' + video.videoWidth + 'x' + video.videoHeight);
+        statusEl.textContent = '✓ Camera active. Center your face.';
+        statusEl.style.color = '#4CAF50';
+        
+        captureBtn.disabled = false;
+        startBtn.disabled = true;
+        
+        if (modelsLoaded) {
+          isDrawing = true;
+          drawLoop();
+          log('Detection overlay started');
+        } else {
+          log('Models not ready - overlay disabled');
+        }
+        
+      } catch (e) {
+        const errMsg = e.name + ': ' + e.message;
+        log('Camera ERROR: ' + errMsg);
+        statusEl.textContent = 'Camera failed: ' + e.message;
+        statusEl.style.color = '#f44336';
+        
+        if (e.name === 'NotAllowedError') {
+          statusEl.textContent = 'Camera blocked. Allow permission in browser settings.';
+        } else if (e.name === 'NotFoundError') {
+          statusEl.textContent = 'No camera found on device.';
+        }
+      }
+    }
+
+    async function drawLoop() {
+      if (!isDrawing) return;
+      
+      if (!modelsLoaded) {
+        requestAnimationFrame(drawLoop);
+        return;
+      }
+
+      try {
+        const displaySize = { width: video.videoWidth, height: video.videoHeight };
+        faceapi.matchDimensions(overlay, displaySize);
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+        const resized = faceapi.resizeResults(detections, displaySize);
+        const ctx = overlay.getContext('2d');
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        faceapi.draw.drawDetections(overlay, resized);
+        faceapi.draw.drawFaceLandmarks(overlay, resized);
+      } catch (e) {
+        console.error('Detection error:', e);
+      }
+      
+      if (isDrawing) {
+        requestAnimationFrame(drawLoop);
+      }
+    }
+
+    async function captureAndRegister() {
+      if (!modelsLoaded) {
+        statusEl.textContent = 'Models not loaded. Please wait.';
+        log('Capture blocked - models not ready');
+        return;
+      }
+
+      log('Capturing face...');
+      statusEl.textContent = 'Capturing...';
+      captureBtn.disabled = true;
+      
+      try {
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+        
+        if (detections.length === 0) {
+          log('No face detected');
+          statusEl.textContent = 'No face found. Try again.';
+          statusEl.style.color = '#ff9800';
+          captureBtn.disabled = false;
+          return;
+        }
+        
+        log('✓ Face detected. Computing descriptor...');
+        const desc = Array.from(detections[0].descriptor);
+        
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          log('ERROR: Not logged in');
+          statusEl.textContent = 'Not logged in. Login first.';
+          statusEl.style.color = '#f44336';
+          captureBtn.disabled = false;
+          return;
+        }
+        
+        log('Uploading to server...');
+        statusEl.textContent = 'Uploading...';
+        
+        const resp = await fetch(window.API_BASE_URL + '/api/student/register-face', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer ' + token 
+          },
+          body: JSON.stringify({ faceDescriptor: desc })
+        });
+        
+        const data = await resp.json();
+        
+        if (!resp.ok) {
+          log('Server error: ' + (data.error || 'Unknown'));
+          statusEl.textContent = 'Error: ' + (data.error || 'Failed');
+          statusEl.style.color = '#f44336';
+          captureBtn.disabled = false;
+          return;
+        }
+        
+        localStorage.setItem('faceDescriptor', JSON.stringify(desc));
+        log('✓ Registration successful!');
+        statusEl.textContent = '✓ Success! Redirecting...';
+        statusEl.style.color = '#4CAF50';
+        
+        setTimeout(() => { 
+          stopCamera();
+          window.location.href = 'student-dashboard.html'; 
+        }, 1500);
+        
+      } catch (e) {
+        log('ERROR: ' + e.message);
+        statusEl.textContent = 'Error: ' + e.message;
+        statusEl.style.color = '#f44336';
+        captureBtn.disabled = false;
+      }
+    }
+
+    // ===== Fallback: Use single photo via <input type="file" capture> =====
+    async function processFallbackFile(file) {
+      try {
+        statusEl.textContent = 'Processing photo...';
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        await new Promise((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = reject;
+          img.src = url;
+        });
+
+        // Create a temporary canvas to run detection
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = img.naturalWidth;
+        tempCanvas.height = img.naturalHeight;
+        const tctx = tempCanvas.getContext('2d');
+        tctx.drawImage(img, 0, 0);
+
+        if (!modelsLoaded && !modelLoadAttempted) {
+          await loadModels();
+        }
+
+        const detections = await faceapi
+          .detectAllFaces(tempCanvas, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+
+        if (detections.length === 0) {
+          statusEl.textContent = 'No face detected in photo. Try again.';
+          statusEl.style.color = '#ff9800';
+          return;
+        }
+
+        const desc = Array.from(detections[0].descriptor);
+
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          statusEl.textContent = 'Not logged in. Login first.';
+          statusEl.style.color = '#f44336';
+          return;
+        }
+
+        const resp = await fetch(window.API_BASE_URL + '/api/student/register-face', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ faceDescriptor: desc })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          statusEl.textContent = 'Error: ' + (data.error || 'Failed');
+          statusEl.style.color = '#f44336';
+          return;
+        }
+
+        localStorage.setItem('faceDescriptor', JSON.stringify(desc));
+        statusEl.textContent = '✓ Face registered from photo! Redirecting...';
+        statusEl.style.color = '#4CAF50';
+        setTimeout(() => { window.location.href = 'student-dashboard.html'; }, 1500);
+
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = 'Processing failed: ' + (e.message || e);
+        statusEl.style.color = '#f44336';
+      }
+    }
+
+    fallbackBtn.onclick = () => fileInput.click();
+    fileInput.onchange = () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (f) processFallbackFile(f);
+    };
+
+    function stopCamera() {
+      isDrawing = false;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        video.srcObject = null;
+        log('Camera stopped');
+      }
+      startBtn.disabled = false;
+      captureBtn.disabled = true;
+    }
+
+    backBtn.onclick = () => { 
+      stopCamera();
+      window.history.back(); 
+    };
+    
+    startBtn.onclick = async () => {
+      if (!modelsLoaded && !modelLoadAttempted) {
+        loadModels().catch(() => {});
+      }
+      startCamera();
+    };
+    
+    captureBtn.onclick = captureAndRegister;
+
+    window.addEventListener('beforeunload', stopCamera);
+
+    // Initialize
+    log('Page loaded');
+    log('Browser: ' + navigator.userAgent.split(' ').pop());
+    log('Protocol: ' + window.location.protocol);
+    log('API Base: ' + (typeof window.API_BASE_URL !== 'undefined' ? window.API_BASE_URL : 'NOT SET'));
+    
+    statusEl.textContent = 'Loading... (30-60s on mobile)';
+    
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', loadModels);
+    } else {
+      setTimeout(loadModels, 500);
+    }
+  </script>
+</body>
+</html>

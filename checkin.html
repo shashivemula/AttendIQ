@@ -6,6 +6,7 @@
     <title>AttendIQ Check-in</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js"></script>
     <style>
         .checkin-container {
             background: linear-gradient(135deg, var(--dark-bg) 0%, #1e293b 50%, var(--dark-bg) 100%);
@@ -239,17 +240,142 @@
             transform: translateY(-2px);
         }
         
+        /* Face Verification Styles */
+        .face-verification {
+            display: none;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: var(--shadow-heavy);
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .face-verification.show {
+            display: block;
+        }
+
+        .face-verification-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .face-verification-description {
+            color: var(--gray-text);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .face-video-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
+        .face-video {
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            border-radius: 12px;
+            border: 2px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .face-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .face-status {
+            margin: 1rem 0;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .face-status.verifying {
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .face-status.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .face-status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .face-btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+        }
+
+        .face-btn.primary {
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        .face-btn.secondary {
+            background: rgba(107, 114, 128, 0.1);
+            color: var(--gray-text);
+            border: 1px solid rgba(107, 114, 128, 0.3);
+        }
+
+        .face-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .face-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         @media (max-width: 768px) {
             .checkin-container {
                 padding: 0.5rem;
             }
-            
+
             .checkin-card {
                 padding: 1.5rem;
             }
-            
+
             .checkin-title {
                 font-size: 1.5rem;
+            }
+
+            .face-verification {
+                padding: 1.5rem;
+            }
+
+            .face-video {
+                max-width: 250px;
             }
         }
     </style>
@@ -312,6 +438,38 @@
             <button id="checkinBtn" class="checkin-btn">
                 <i class="fas fa-check-circle"></i> Mark My Attendance
             </button>
+
+            <!-- Face Verification Section -->
+            <div id="faceVerification" class="face-verification">
+                <div class="face-verification-title">
+                    <i class="fas fa-user-check"></i> Face Verification
+                </div>
+                <div class="face-verification-description">
+                    Please position your face in the camera and look directly at it for verification.
+                </div>
+
+                <div class="face-video-container">
+                    <video id="faceVideo" class="face-video" autoplay muted playsinline></video>
+                    <canvas id="faceCanvas" class="face-canvas"></canvas>
+                </div>
+
+                <div id="faceStatus" class="face-status verifying">
+                    <i class="fas fa-spinner fa-spin"></i> Initializing camera...
+                </div>
+
+                <div>
+                    <button id="verifyFaceBtn" class="face-btn primary" disabled>
+                        <i class="fas fa-check"></i> Verify Face
+                    </button>
+                    <button id="verifyFaceFallbackBtn" class="face-btn primary">
+                        <i class="fas fa-camera"></i> Take Photo to Verify
+                    </button>
+                    <button id="retryFaceBtn" class="face-btn secondary" style="display: none;">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                </div>
+                <input id="faceFileInput" type="file" accept="image/*" capture="user" style="display:none" />
+            </div>
             </div>
         </div>
     </div>
@@ -390,11 +548,19 @@
             }
         }
         
-        // Get URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const sessionId = urlParams.get('session') || urlParams.get('sessionId'); // Support both for backward compatibility
-        const subject = urlParams.get('subject');
-        const room = urlParams.get('room');
+// Get URL parameters
+const urlParams = new URLSearchParams(window.location.search);
+const sessionId = urlParams.get('session') || urlParams.get('sessionId'); // Support both for backward compatibility
+const subject = urlParams.get('subject');
+const room = urlParams.get('room');
+const serverUrl = urlParams.get('serverUrl');
+
+// Override API_BASE_URL if serverUrl provided (for cross-network QR functionality)
+if (serverUrl) {
+    window.API_BASE_URL = serverUrl;
+    window.SOCKET_URL = serverUrl;
+    console.log('Using dynamic server URL:', serverUrl);
+}
 
         // Check if user is logged in
         const userData = localStorage.getItem('userData');
@@ -578,8 +744,12 @@
                                 (error && (error.status === 401 || error.status === 403));
 
             if (authRelated) {
+                // Clear invalid token and redirect to login
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userData');
+                localStorage.removeItem('userType');
                 showLoginPrompt();
-                message = 'Please login as a student to continue.';
+                message = 'Your session has expired. Please login again.';
                 showStatus('error', message);
                 return;
             }
@@ -599,89 +769,15 @@
             showStatus('error', message);
         }
 
-        // Handle check-in button click
-        document.getElementById('checkinBtn').addEventListener('click', async function() {
-            if (!userData || !authToken || userType !== 'student') {
-                showLoginPrompt();
-                return;
-            }
 
-            const user = JSON.parse(userData);
-            const button = this;
-            
-            // Disable button and show processing
-            button.disabled = true;
-            showStatus('processing', 'Marking your attendance...');
-
-            try {
-                // Get geolocation
-                let location = null;
-                try {
-                    showStatus('processing', 'Requesting your location...');
-                    const position = await getCurrentPosition();
-                    location = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude
-                    };
-                } catch (err) {
-                    console.log('Geolocation not available:', err);
-                    // Provide clearer guidance before proceeding
-                    if (err && (err.code === 'INSECURE_ORIGIN' || /secure origin/i.test(err.message || ''))) {
-                        showStatus('error', 'This browser requires HTTPS for location on LAN IP. Use an HTTPS URL (e.g., ngrok) or ask faculty to disable geofence. Proceeding without location...');
-                    } else if (err && (err.code === 1 || /denied/i.test(err.message || ''))) { // PERMISSION_DENIED
-                        showStatus('error', 'Location permission denied. Please allow location access and try again. Proceeding without location...');
-                    } else if (err && (err.code === 3 || /timeout/i.test(err.message || ''))) { // TIMEOUT
-                        showStatus('error', 'Getting location timed out. Ensure GPS is on and try again. Proceeding without location...');
-                    } else {
-                        showStatus('error', 'Could not get location. Proceeding without location...');
-                    }
-                }
-
-                // Make API call to mark attendance using dynamic base URL
-                const apiUrl = window.API_BASE_URL + '/api/student/mark-attendance';
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({
-                        sessionId: sessionId,
-                        studentEmail: user.email,
-                        timestamp: new Date().toISOString(),
-                        location: location
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok && data.success) {
-                    // Success!
-                    showStatus('success', `✅ Attendance marked successfully! Status: ${data.status.toUpperCase()}`);
-                    showToast('Attendance marked successfully');
-                    
-                    // Redirect to success page after 2 seconds
-                    setTimeout(() => {
-                        window.location.href = `${window.API_BASE_URL}/checkin-success/${sessionId}/${user.id}`;
-                    }, 2000);
-                } else {
-                    // Error from server - use enhanced error handling
-                    handleApiError(null, data);
-                    button.disabled = false;
-                }
-            } catch (error) {
-                console.error('Check-in error:', error);
-                handleApiError(error, null);
-                button.disabled = false;
-            }
-        });
 
         // Helper: detect if browser likely requires HTTPS for geolocation
         function requiresSecureOrigin() {
             const host = window.location.hostname;
-            const isLocalhost = host === 'localhost' || host === '127.0.0.1';
+            const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.');
             const isHttps = window.location.protocol === 'https:';
-            return !isHttps && !isLocalhost; // Most browsers require HTTPS for non-localhost
+            // Allow HTTP for local development networks (LAN IPs)
+            return !isHttps && !isLocalhost;
         }
 
         // Helper function to get geolocation with one retry and longer timeout
@@ -692,12 +788,12 @@
                     return;
                 }
 
-                // If insecure origin and not localhost, warn and still attempt
+                // If insecure origin and not localhost/LAN, warn and still attempt
                 if (requiresSecureOrigin()) {
-                    const err = new Error('Geolocation blocked on insecure origin');
+                    const err = new Error('Geolocation blocked on insecure origin. Use HTTPS or LAN IP for better compatibility.');
                     err.code = 'INSECURE_ORIGIN';
                     // Do not early reject; attempt anyway because some Android browsers allow it
-                    console.warn('Potential insecure origin for geolocation');
+                    console.warn('Potential insecure origin for geolocation - attempting anyway');
                 }
 
                 const options = { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 };
@@ -743,6 +839,527 @@
             document.body.appendChild(t);
             setTimeout(()=>{ if (t.parentNode) t.remove(); }, 2500);
         }
+
+        // Face Verification Variables
+        let faceModelsLoaded = false;
+        let faceStream = null;
+        let faceDetectionInterval = null;
+        let registeredFaceDescriptor = null;
+        let lastFaceDistance = null;
+        let faceVerifiedOK = false;
+
+        // Initialize face verification
+        async function initializeFaceVerification() {
+            try {
+                // Step 1: Load models first (show progress)
+                updateFaceStatus('verifying', 'Loading AI models (this may take 30-60s)...');
+                try {
+                    await loadFaceModels();
+                    console.log('Models loaded OK');
+                } catch (modelErr) {
+                    console.error('Model load failed:', modelErr);
+                    updateFaceStatus('error', 'Models failed to load. Use "Take Photo to Verify" anyway - it will retry.');
+                }
+
+                // Step 2: Get registered face descriptor from localStorage OR server
+                updateFaceStatus('verifying', 'Loading your face data...');
+                let storedDescriptor = localStorage.getItem('faceDescriptor');
+                if (storedDescriptor) {
+                    registeredFaceDescriptor = new Float32Array(JSON.parse(storedDescriptor));
+                    console.log('Loaded face descriptor from localStorage');
+                } else {
+                    // Fallback: Fetch from server
+                    console.log('No descriptor in localStorage, fetching from server...');
+                    try {
+                        const token = localStorage.getItem('authToken');
+                        if (token) {
+                            const resp = await fetch(window.API_BASE_URL + '/api/student/face-descriptor', {
+                                headers: { 'Authorization': 'Bearer ' + token }
+                            });
+                            if (resp.ok) {
+                                const data = await resp.json();
+                                if (data.success && data.faceDescriptor) {
+                                    registeredFaceDescriptor = new Float32Array(data.faceDescriptor);
+                                    localStorage.setItem('faceDescriptor', JSON.stringify(data.faceDescriptor));
+                                    console.log('Loaded face descriptor from server');
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Failed to fetch descriptor from server:', e);
+                    }
+                }
+
+                if (!registeredFaceDescriptor) {
+                    updateFaceStatus('error', 'No registered face found. Please register first.');
+                    return;
+                }
+
+                // Step 3: Try to start camera (may fail on HTTP)
+                try {
+                    await startCamera();
+                    startFaceDetection();
+                    updateFaceStatus('verifying', 'Position your face in the camera');
+                } catch (camErr) {
+                    console.log('Camera failed, use fallback button:', camErr);
+                    updateFaceStatus('error', 'Camera blocked. Use "Take Photo to Verify" button below.');
+                }
+
+            } catch (error) {
+                console.error('Face verification initialization failed:', error);
+                updateFaceStatus('error', 'Use "Take Photo to Verify" button below.');
+            }
+        }
+
+        // Load face-api.js models with timeout and fallback
+        async function loadFaceModels() {
+            if (faceModelsLoaded) return;
+
+            // Ensure API_BASE_URL is set
+            if (!window.API_BASE_URL) {
+                console.error('API_BASE_URL not set!');
+                throw new Error('Configuration error: API_BASE_URL missing');
+            }
+
+            // Try local first for mobile (faster and works offline)
+            const localPath = window.API_BASE_URL + '/js/weights/';
+            console.log('API_BASE_URL:', window.API_BASE_URL);
+            console.log('Trying local models first:', localPath);
+            
+            try {
+                const timeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout')), 60000)
+                ); // 60 second timeout for mobile
+                
+                await Promise.race([
+                    Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri(localPath),
+                        faceapi.nets.faceLandmark68Net.loadFromUri(localPath),
+                        faceapi.nets.faceRecognitionNet.loadFromUri(localPath)
+                    ]),
+                    timeout
+                ]);
+                
+                faceModelsLoaded = true;
+                console.log('✓ Models loaded from local server');
+                return;
+            } catch (localErr) {
+                console.log('Local failed:', localErr.message, '- trying CDN...');
+                
+                // Fallback to CDN
+                const cdnPath = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
+                try {
+                    await Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri(cdnPath),
+                        faceapi.nets.faceLandmark68Net.loadFromUri(cdnPath),
+                        faceapi.nets.faceRecognitionNet.loadFromUri(cdnPath)
+                    ]);
+                    faceModelsLoaded = true;
+                    console.log('✓ Models loaded from CDN');
+                } catch (cdnErr) {
+                    console.error('Both local and CDN failed:', cdnErr);
+                    throw new Error('Failed to load models from local and CDN. Check connection.');
+                }
+            }
+        }
+
+        // Start camera
+        async function startCamera() {
+            try {
+                const video = document.getElementById('faceVideo');
+                faceStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: 640,
+                        height: 480,
+                        facingMode: 'user'
+                    }
+                });
+                video.srcObject = faceStream;
+                return new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        resolve();
+                    };
+                });
+            } catch (error) {
+                console.error('Camera access failed:', error);
+                throw new Error('Camera access denied. Please allow camera permissions.');
+            }
+        }
+
+        // Start face detection
+        function startFaceDetection() {
+            const video = document.getElementById('faceVideo');
+            const canvas = document.getElementById('faceCanvas');
+            const displaySize = { width: video.videoWidth, height: video.videoHeight };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            faceDetectionInterval = setInterval(async () => {
+                if (!faceModelsLoaded) return;
+
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceDescriptors();
+
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                faceapi.draw.drawDetections(canvas, resizedDetections);
+                faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+
+                // Enable verify button if face is detected
+                const verifyBtn = document.getElementById('verifyFaceBtn');
+                if (detections.length > 0) {
+                    verifyBtn.disabled = false;
+                    updateFaceStatus('verifying', 'Face detected! Click "Verify Face" to proceed');
+                } else {
+                    verifyBtn.disabled = true;
+                    updateFaceStatus('verifying', 'Position your face in the camera');
+                }
+            }, 100);
+        }
+
+        // Update face status
+        function updateFaceStatus(type, message) {
+            const statusEl = document.getElementById('faceStatus');
+            statusEl.className = `face-status ${type}`;
+            statusEl.innerHTML = `<i class="fas fa-${getStatusIcon(type)}"></i> ${message}`;
+        }
+
+        // Get status icon
+        function getStatusIcon(type) {
+            switch (type) {
+                case 'verifying': return 'spinner fa-spin';
+                case 'success': return 'check-circle';
+                case 'error': return 'exclamation-circle';
+                default: return 'info-circle';
+            }
+        }
+
+        // Verify face
+        async function verifyFace() {
+            if (!registeredFaceDescriptor) {
+                updateFaceStatus('error', 'No registered face found. Please register your face first.');
+                return false;
+            }
+
+            const video = document.getElementById('faceVideo');
+            const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks()
+                .withFaceDescriptors();
+
+            if (detections.length === 0) {
+                updateFaceStatus('error', 'No face detected. Please position your face properly.');
+                return false;
+            }
+
+            // Compute Euclidean distance between stored descriptor and live descriptor
+            const live = detections[0].descriptor;
+            const stored = registeredFaceDescriptor;
+            let sum = 0;
+            for (let i = 0; i < live.length; i++) {
+                const d = live[i] - stored[i];
+                sum += d * d;
+            }
+            const distance = Math.sqrt(sum);
+            lastFaceDistance = distance;
+
+            // Threshold mapping: ~60-65% match ~ distance <= 0.45 (more lenient)
+            if (distance <= 0.45) {
+                faceVerifiedOK = true;
+                updateFaceStatus('success', 'Face verified successfully!');
+                return true;
+            } else {
+                faceVerifiedOK = false;
+                updateFaceStatus('error', 'Face verification failed. Please try again.');
+                return false;
+            }
+        }
+
+        // Stop face verification
+        function stopFaceVerification() {
+            if (faceDetectionInterval) {
+                clearInterval(faceDetectionInterval);
+                faceDetectionInterval = null;
+            }
+            if (faceStream) {
+                faceStream.getTracks().forEach(track => track.stop());
+                faceStream = null;
+            }
+        }
+
+        // Show face verification
+        function showFaceVerification() {
+            const faceDiv = document.getElementById('faceVerification');
+            faceDiv.classList.add('show');
+            initializeFaceVerification();
+        }
+
+        // Hide face verification
+        function hideFaceVerification() {
+            const faceDiv = document.getElementById('faceVerification');
+            faceDiv.classList.remove('show');
+            stopFaceVerification();
+        }
+
+        // Event listeners for face verification
+        document.getElementById('verifyFaceBtn').addEventListener('click', async function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+
+            try {
+                const verified = await verifyFace();
+                if (verified) {
+                    // Proceed with check-in
+                    setTimeout(() => {
+                        hideFaceVerification();
+                        performCheckin();
+                    }, 1500);
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Verify Face';
+                    document.getElementById('retryFaceBtn').style.display = 'inline-block';
+                }
+            } catch (error) {
+                console.error('Face verification error:', error);
+                updateFaceStatus('error', 'Verification failed. Please try again.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Verify Face';
+            }
+        });
+
+        document.getElementById('retryFaceBtn').addEventListener('click', function() {
+            document.getElementById('verifyFaceBtn').disabled = false;
+            document.getElementById('verifyFaceBtn').innerHTML = '<i class="fas fa-check"></i> Verify Face';
+            this.style.display = 'none';
+            updateFaceStatus('verifying', 'Position your face in the camera');
+        });
+
+        // ===== Fallback: Verify face from captured photo =====
+        async function verifyFaceFromPhoto(file) {
+            try {
+                // Ensure we have the registered descriptor (fetch from server if needed)
+                if (!registeredFaceDescriptor) {
+                    updateFaceStatus('verifying', 'Loading your face data...');
+                    let storedDescriptor = localStorage.getItem('faceDescriptor');
+                    if (storedDescriptor) {
+                        registeredFaceDescriptor = new Float32Array(JSON.parse(storedDescriptor));
+                    } else {
+                        try {
+                            const token = localStorage.getItem('authToken');
+                            if (token) {
+                                const resp = await fetch(window.API_BASE_URL + '/api/student/face-descriptor', {
+                                    headers: { 'Authorization': 'Bearer ' + token }
+                                });
+                                if (resp.ok) {
+                                    const data = await resp.json();
+                                    if (data.success && data.faceDescriptor) {
+                                        registeredFaceDescriptor = new Float32Array(data.faceDescriptor);
+                                        localStorage.setItem('faceDescriptor', JSON.stringify(data.faceDescriptor));
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.log('Failed to fetch descriptor:', e);
+                        }
+                    }
+                }
+
+                if (!registeredFaceDescriptor) {
+                    updateFaceStatus('error', 'No registered face found. Please register first.');
+                    return false;
+                }
+
+                updateFaceStatus('verifying', 'Processing photo...');
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = url;
+                });
+
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.naturalWidth;
+                tempCanvas.height = img.naturalHeight;
+                const ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // Ensure models are loaded with retry
+                if (!faceModelsLoaded) {
+                    updateFaceStatus('verifying', 'Loading AI models (30-60s on mobile)...');
+                    try {
+                        await loadFaceModels();
+                    } catch (modelErr) {
+                        console.error('Model load error:', modelErr);
+                        updateFaceStatus('error', 'Models failed. Check internet and try again.');
+                        return false;
+                    }
+                }
+
+                updateFaceStatus('verifying', 'Detecting face in photo...');
+                const detections = await faceapi
+                    .detectAllFaces(tempCanvas, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceDescriptors();
+
+                if (detections.length === 0) {
+                    updateFaceStatus('error', 'No face detected in photo. Try again.');
+                    return false;
+                }
+
+                // Compute distance
+                const live = detections[0].descriptor;
+                const stored = registeredFaceDescriptor;
+                let sum = 0;
+                for (let i = 0; i < live.length; i++) {
+                    const d = live[i] - stored[i];
+                    sum += d * d;
+                }
+                const distance = Math.sqrt(sum);
+                lastFaceDistance = distance;
+
+                if (distance <= 0.45) {
+                    faceVerifiedOK = true;
+                    updateFaceStatus('success', 'Face verified! Marking attendance...');
+                    setTimeout(() => {
+                        hideFaceVerification();
+                        performCheckin();
+                    }, 1500);
+                    return true;
+                } else {
+                    faceVerifiedOK = false;
+                    updateFaceStatus('error', 'Face verification failed. Distance: ' + distance.toFixed(2));
+                    return false;
+                }
+            } catch (e) {
+                console.error('Photo verification error:', e);
+                updateFaceStatus('error', 'Error processing photo: ' + e.message);
+                return false;
+            }
+        }
+
+        document.getElementById('verifyFaceFallbackBtn').addEventListener('click', function() {
+            document.getElementById('faceFileInput').click();
+        });
+
+        document.getElementById('faceFileInput').addEventListener('change', function() {
+            const file = this.files && this.files[0];
+            if (file) verifyFaceFromPhoto(file);
+        });
+
+        // Modified check-in function to include face verification
+        async function performCheckin() {
+            if (!userData || !authToken || userType !== 'student') {
+                showLoginPrompt();
+                return;
+            }
+
+            const user = JSON.parse(userData);
+            const button = document.getElementById('checkinBtn');
+
+            // Disable button and show processing
+            button.disabled = true;
+            showStatus('processing', 'Marking your attendance...');
+
+            try {
+                // Ensure session meta is loaded
+                if (!window.sessionMeta) {
+                    showStatus('processing', 'Loading session details...');
+                    const metaResp = await fetch(window.API_BASE_URL + '/api/session/' + encodeURIComponent(sessionId));
+                    if (metaResp.ok) {
+                        window.sessionMeta = await metaResp.json();
+                    } else {
+                        throw new Error('Failed to load session details');
+                    }
+                }
+
+                const geoRequired = window.sessionMeta?.geoRequired || false;
+
+                // Get geolocation
+                let location = null;
+                try {
+                    showStatus('processing', 'Requesting your location...');
+                    const position = await getCurrentPosition();
+                    location = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                } catch (err) {
+                    console.log('Geolocation not available:', err);
+                    // Provide clearer guidance
+                    if (err && (err.code === 'INSECURE_ORIGIN' || /secure origin/i.test(err.message || ''))) {
+                        showStatus('error', 'Location access blocked. Try: 1) Use HTTPS URL, 2) Use LAN IP instead of localhost, or 3) Ask faculty to disable location verification.');
+                    } else if (err && (err.code === 1 || /denied/i.test(err.message || ''))) { // PERMISSION_DENIED
+                        showStatus('error', 'Location permission denied. Please allow location access in browser settings and try again.');
+                    } else if (err && (err.code === 3 || /timeout/i.test(err.message || ''))) { // TIMEOUT
+                        showStatus('error', 'Getting location timed out. Ensure GPS/location services are enabled and try again.');
+                    } else {
+                        showStatus('error', 'Could not get location. Check GPS settings and try again.');
+                    }
+                }
+
+                // Note: Geolocation is now optional - server allows check-in even if location not provided
+
+                // Make API call to mark attendance using dynamic base URL
+                const apiUrl = window.API_BASE_URL + '/api/student/mark-attendance';
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        sessionId: sessionId,
+                        studentEmail: user.email,
+                        timestamp: new Date().toISOString(),
+                        location: location,
+                        faceVerified: !!faceVerifiedOK,
+                        faceDistance: lastFaceDistance
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Success!
+                    showStatus('success', `✅ Attendance marked successfully! Status: ${data.status.toUpperCase()}`);
+                    showToast('Attendance marked successfully');
+
+                    // Redirect to student dashboard after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = `${window.API_BASE_URL}/student-dashboard.html`;
+                    }, 2000);
+                } else {
+                    // Error from server - use enhanced error handling
+                    handleApiError(null, data);
+                    button.disabled = false;
+                }
+            } catch (error) {
+                console.error('Check-in error:', error);
+                handleApiError(error, null);
+                button.disabled = false;
+            }
+        }
+
+        // Modified check-in button click handler
+        document.getElementById('checkinBtn').addEventListener('click', async function() {
+            if (!userData || !authToken || userType !== 'student') {
+                showLoginPrompt();
+                return;
+            }
+
+            // Always require face verification before check-in
+            const storedDescriptor = localStorage.getItem('faceDescriptor');
+            if (!storedDescriptor) {
+                showStatus('error', 'Face verification required. Please register your face first.');
+                setTimeout(() => { window.location.href = 'face-registration.html'; }, 2000);
+                return;
+            }
+
+            // Show face verification UI; on success, it will call performCheckin()
+            showFaceVerification();
+        });
     </script>
 </body>
 </html>

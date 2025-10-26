@@ -1,10 +1,7 @@
-modules = ["web", "nodejs-20", "postgresql-16"]
-[agent]
-expertMode = true
+modules = ["web", "nodejs-20"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["mysql80"]
 
 [workflows]
 runButton = "Project"
@@ -12,35 +9,22 @@ runButton = "Project"
 [[workflows.workflow]]
 name = "Project"
 mode = "parallel"
-author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "AttendIQ Backend"
+args = "Start Server"
 
 [[workflows.workflow]]
-name = "AttendIQ Backend"
-author = "agent"
+name = "Start Server"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm start"
 waitForPort = 5000
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 35145
-externalPort = 3001
-
-[[ports]]
-localPort = 41129
-externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"

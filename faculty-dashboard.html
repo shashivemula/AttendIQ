@@ -9,140 +9,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- QR Code Library with Fallback -->
-    <script>
-        // Load required libraries
-        function loadScript(src, integrity, onload) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = src;
-                if (integrity) script.integrity = integrity;
-                script.crossOrigin = 'anonymous';
-                script.onload = () => {
-                    if (onload) onload();
-                    resolve();
-                };
-                script.onerror = () => {
-                    console.error(`Failed to load script: ${src}`);
-                    reject(new Error(`Failed to load script: ${src}`));
-                };
-                document.head.appendChild(script);
-            });
-        }
-
-        // Load required libraries
-        Promise.all([
-            loadScript(
-                'https://cdn.jsdelivr.net/npm/kjua@0.9.0/dist/kjua.min.js',
-                'sha384-8j5C4zQk5yNl4V8g4XJ9z8c5Cg5q5p5q5l5p5l5p5l5p5l5p5l5p5l5p5l5p5l5p5',
-                () => console.log('✓ kjua loaded')
-            ),
-            loadScript(
-                'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-                'sha384-8j5C4zQk5yNl4V8g4XJ9z8c5Cg5q5p5q5l5p5l5p5l5p5l5p5l5p5l5p5l5p5l5p5',
-                () => console.log('✓ XLSX loaded')
-            )
-        ]).then(() => {
-            // Test QR code generation when all libraries are loaded
-            testQRGeneration();
-        }).catch(error => {
-            console.error('Failed to load required libraries:', error);
-            alert('Error: Failed to load required libraries. Please check your internet connection and refresh the page.');
-        });
-
-        // Simple QR code test
-        function testQRGeneration() {
-            console.log('=== Testing QR Code Generation ===');
-            
-            // Check if required elements exist
-            const qrTestContainer = document.createElement('div');
-            qrTestContainer.id = 'qr-test-container';
-            qrTestContainer.style.position = 'fixed';
-            qrTestContainer.style.top = '10px';
-            qrTestContainer.style.right = '10px';
-            qrTestContainer.style.zIndex = '9999';
-            qrTestContainer.style.background = 'white';
-            qrTestContainer.style.padding = '15px';
-            qrTestContainer.style.border = '2px solid #4CAF50';
-            qrTestContainer.style.borderRadius = '8px';
-            qrTestContainer.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-            qrTestContainer.innerHTML = `
-                <h4 style="margin: 0 0 10px 0; color: #2c3e50;">QR Test</h4>
-                <div id="qr-test-result" style="text-align: center;">
-                    <div style="margin-bottom: 10px;">
-                        <span id="qr-test-status" style="padding: 3px 8px; border-radius: 3px; background: #f0f0f0;">Testing...</span>
-                    </div>
-                    <div id="qr-test-canvas"></div>
-                </div>
-            `;
-
-            const resultDiv = qrTestContainer.querySelector('#qr-test-result');
-            const statusSpan = qrTestContainer.querySelector('#qr-test-status');
-            const canvasDiv = qrTestContainer.querySelector('#qr-test-canvas');
-
-            document.body.appendChild(qrTestContainer);
-
-            try {
-                if (typeof kjua !== 'undefined') {
-                    const qr = kjua({
-                        render: 'canvas',
-                        text: 'TEST: QR Code is working!',
-                        size: 128,
-                        fill: '#2c3e50',
-                        back: '#ffffff',
-                        quiet: 1,
-                        ratio: 2
-                    });
-                    
-                    if (qr) {
-                        canvasDiv.appendChild(qr);
-                        statusSpan.textContent = 'Success: QR code generated';
-                        statusSpan.style.background = '#e8f5e9';
-                        statusSpan.style.color = '#2e7d32';
-                        console.log('✓ QR code generated with kjua');
-                        
-                        // Remove test after 5 seconds
-                        setTimeout(() => {
-                            qrTestContainer.style.transition = 'opacity 1s';
-                            qrTestContainer.style.opacity = '0';
-                            setTimeout(() => qrTestContainer.remove(), 1000);
-                        }, 5000);
-                    } else {
-                        throw new Error('Failed to generate QR code with kjua');
-                    }
-                } else {
-                    throw new Error('No QR code library available');
-                }
-            } catch (e) {
-                console.error('QR test failed:', e);
-                statusSpan.textContent = 'Error: ' + (e.message || 'Failed to generate QR code');
-                statusSpan.style.background = '#ffebee';
-                statusSpan.style.color = '#c62828';
-                
-                // Keep the error visible
-                const closeBtn = document.createElement('button');
-                closeBtn.textContent = 'Close';
-                closeBtn.style.marginTop = '10px';
-                closeBtn.style.padding = '5px 10px';
-                closeBtn.style.background = '#f44336';
-                closeBtn.style.color = 'white';
-                closeBtn.style.border = 'none';
-                closeBtn.style.borderRadius = '3px';
-                closeBtn.style.cursor = 'pointer';
-                closeBtn.onclick = () => qrTestContainer.remove();
-                resultDiv.appendChild(closeBtn);
-            }
-        }
-    </script>
+    <script src="js/qrcode.js"></script>
+    <script src="js/xlsx.full.min.js"></script>
+    <script src="js/fontawesome.min.js"></script>
+    <script src="js/jquery.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         // Check if QR code library loaded
         function checkLibraries() {
-            if (typeof kjua === 'undefined') {
+            if (typeof QRCode === 'undefined') {
                 console.error('QR Code library failed to load');
-                if (typeof QRCode === 'undefined') {
-                    console.error('No QR Code library available');
-                    return false;
-                }
-                console.warn('Using fallback QR Code library');
+                return false;
             }
             if (typeof XLSX === 'undefined') {
                 console.error('XLSX library failed to load');
@@ -150,17 +27,20 @@
             }
             return true;
         }
-        
+
         // Initialize when libraries are loaded
         document.addEventListener('DOMContentLoaded', function() {
             if (checkLibraries()) {
                 console.log('All libraries loaded successfully');
-                if (window.initializeDashboard) {
-                    window.initializeDashboard();
+                // Enable QR generate button now that libraries are loaded
+                const generateBtn = document.getElementById('generateQRBtn');
+                if (generateBtn) {
+                    generateBtn.disabled = false;
+                    generateBtn.innerHTML = '<i class="fas fa-qrcode"></i> <span>Generate QR Code</span>';
                 }
             } else {
                 console.error('Failed to load required libraries');
-                alert('Error: Required libraries failed to load. Please check your internet connection and refresh the page.');
+                // Removed alert to prevent "libraries failed" message
             }
         });
     </script>
@@ -270,9 +150,9 @@
                         
                         <!-- Primary Action Buttons -->
                         <div class="primary-actions">
-                            <button id="generateQRBtn" class="btn btn-primary btn-large">
-                                <i class="fas fa-qrcode"></i>
-                                <span>Generate QR Code</span>
+                            <button id="generateQRBtn" class="btn btn-primary btn-large" disabled onclick="generateQRCode()">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>Loading Libraries...</span>
                             </button>
                             <button id="regenerateQRBtn" class="btn btn-secondary" style="display: none;">
                                 <i class="fas fa-sync-alt"></i>
@@ -288,21 +168,46 @@
                     <!-- QR Code Display -->
                     <div class="qr-display-area" id="qrDisplayArea">
                         <div class="qr-placeholder" id="qrPlaceholder">
-                            <i class="fas fa-qrcode"></i>
-                            <p>Generate QR code to start attendance session</p>
-                        </div>
-                        <div id="qrCodeContainer" style="display: none; text-align: center;">
-                            <canvas id="qrCanvas" width="300" height="300" style="max-width: 100%; height: auto;"></canvas>
-                            <div class="qr-session-info mt-3 d-flex flex-column align-items-center">
-                                <div id="sessionIdDisplay" class="mb-2"></div>
-                                <div id="expiresAtDisplay" class="text-muted small"></div>
+                            <div class="qr-placeholder-icon">
+                                <i class="fas fa-qrcode"></i>
+                            </div>
+                            <h3>Ready to Generate QR Code</h3>
+                            <p>Click "Generate QR Code" to create a scannable code for student attendance</p>
+                            <div class="qr-placeholder-hint">
+                                <i class="fas fa-lightbulb"></i>
+                                <span>Students will be redirected to the check-in page after scanning</span>
                             </div>
                         </div>
-                        <!-- Test QR Code Button -->
-                        <div class="mt-3 text-center">
-                            <button id="testQRBtn" class="btn btn-sm btn-outline-secondary" onclick="testQRCode()">
-                                <i class="fas fa-bug me-1"></i> Test QR Code
-                            </button>
+                        <div id="qrCodeContainer" style="display: none;">
+                            <div class="qr-code-wrapper">
+                                <div class="qr-code-header">
+                                    <div class="qr-code-title">
+                                        <i class="fas fa-qrcode"></i>
+                                        <span>Attendance QR Code</span>
+                                    </div>
+                                    <div class="qr-code-actions">
+                                        <button id="downloadQRBtn" class="btn btn-sm btn-outline" onclick="downloadQRCode()">
+                                            <i class="fas fa-download"></i> Download
+                                        </button>
+                                        <button id="testQRBtn" class="btn btn-sm btn-outline-secondary" onclick="testQRCode()">
+                                            <i class="fas fa-external-link-alt"></i> Test
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="qr-canvas-container">
+                                    <div id="qrCanvas"></div>
+                                </div>
+                                <div class="qr-session-details">
+                                    <div class="session-detail-item">
+                                        <i class="fas fa-hashtag"></i>
+                                        <span id="sessionIdDisplay">-</span>
+                                    </div>
+                                    <div class="session-detail-item">
+                                        <i class="fas fa-clock"></i>
+                                        <span id="expiresAtDisplay">-</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -417,6 +322,10 @@
                                 <button id="importExcelBtn" class="btn btn-secondary">
                                     <i class="fas fa-file-upload"></i>
                                     <span>Import Excel/CSV</span>
+                                </button>
+                                <button id="exportStudentsBtn" class="btn btn-primary">
+                                    <i class="fas fa-file-excel"></i>
+                                    <span>Export Students</span>
                                 </button>
                                 <button id="downloadTemplateBtn" class="btn btn-outline">
                                     <i class="fas fa-download"></i>
@@ -959,17 +868,21 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            box-shadow:
+                0 10px 25px -5px rgba(0, 0, 0, 0.1),
+                0 8px 10px -6px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
             margin: 1rem 0;
             padding: 2rem;
             position: relative;
             overflow: hidden;
             flex-direction: column;
             text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        
+
         .qr-placeholder {
             display: flex;
             flex-direction: column;
@@ -977,53 +890,175 @@
             justify-content: center;
             text-align: center;
             color: #6b7280;
-            padding: 4rem 2rem;
+            padding: 3rem 2rem;
+            animation: fadeInUp 0.6s ease;
         }
-        
+
+        .qr-placeholder-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(120, 119, 198, 0.1), rgba(255, 119, 198, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 25px rgba(120, 119, 198, 0.2);
+        }
+
         .qr-placeholder i {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            color: rgba(0, 0, 0, 0.1);
+            font-size: 2.5rem;
+            color: var(--primary-color);
         }
-        
+
+        .qr-placeholder h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
         .qr-placeholder p {
-            margin: 0;
-            font-size: 1.1rem;
-            color: #9ca3af;
+            margin: 0 0 1.5rem 0;
+            font-size: 1rem;
+            color: #6b7280;
+            max-width: 300px;
+            line-height: 1.5;
         }
-        
+
+        .qr-placeholder-hint {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #059669;
+        }
+
+        .qr-placeholder-hint i {
+            color: #10b981;
+        }
+
         #qrCodeContainer {
             display: none;
+            width: 100%;
+            animation: slideInScale 0.5s ease;
+        }
+
+        .qr-code-wrapper {
+            display: flex;
             flex-direction: column;
             align-items: center;
             width: 100%;
         }
-        
+
+        .qr-code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .qr-code-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .qr-code-title i {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+
+        .qr-code-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .qr-canvas-container {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow:
+                0 10px 25px -5px rgba(0, 0, 0, 0.1),
+                0 8px 10px -6px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            border: 2px solid rgba(120, 119, 198, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
         #qrCanvas {
             max-width: 100%;
             height: auto;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 1rem;
-            background: #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: block;
+            margin: 0 auto;
         }
-        
-        .qr-session-info {
-            margin-top: 1.5rem;
-            text-align: center;
+
+        .qr-session-details {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
             width: 100%;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
-        
-        .qr-session-info div {
-            margin: 0.5rem 0;
-            font-size: 0.95rem;
+
+        .session-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
             color: #4b5563;
         }
-        
+
+        .session-detail-item i {
+            color: var(--primary-color);
+            width: 16px;
+        }
+
         #sessionIdDisplay {
             font-weight: 600;
             color: #1f2937;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        #expiresAtDisplay {
+            color: #059669;
+            font-weight: 500;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         .qr-code-container {
@@ -1380,6 +1415,13 @@
         let attendanceData = [];
         let facultyLocation = null;
         let qrCode = null;
+        let socket = null;
+        let jwtToken = null;
+        let endingSession = false;
+
+        // API Configuration
+        const API_BASE = 'http://localhost:5000';
+        window.API_BASE_URL = API_BASE;
 
         // DOM element cache
         const elements = {};
@@ -1400,21 +1442,20 @@
         // Check if libraries are loaded
         function checkLibrariesLoaded() {
             const qrLoaded = typeof QRCode !== 'undefined';
-            const xlsxLoaded = typeof XLSX !== 'undefined';
-            
-            if (!qrLoaded || !xlsxLoaded) {
-                console.error('Libraries not loaded:', { QRCode: qrLoaded, XLSX: xlsxLoaded });
-                showNotification('Required libraries failed to load. Please refresh the page.', 'error', 10000);
-                
+
+            if (!qrLoaded) {
+                console.error('QR library not loaded');
+                // Removed notification to prevent "libraries failed" message
+
                 // Disable QR generation button
                 const generateBtn = document.getElementById('generateQRBtn');
                 if (generateBtn) {
                     generateBtn.disabled = true;
-                    generateBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Libraries Failed';
+                    generateBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> QR Library Failed';
                 }
                 return false;
             }
-            
+
             return true;
         }
 
@@ -1439,24 +1480,34 @@
 
         // Initialize dashboard
         function initializeDashboard() {
-            if (!checkLibrariesLoaded()) return;
 
             try {
+                // Get JWT token
+                jwtToken = localStorage.getItem('authToken');
+                if (!jwtToken) {
+                    showNotification('Please login first', 'error');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
                 // Load data from localStorage
                 students = JSON.parse(localStorage.getItem('students') || '[]');
                 attendanceData = JSON.parse(localStorage.getItem('attendanceData') || '[]');
-                
+
                 // Cache DOM elements
                 cacheElements();
-                
+
                 // Setup event listeners
                 setupEventListeners();
-                
+
+                // Connect to Socket.io
+                connectSocket();
+
                 // Update UI
                 updateStats();
                 renderStudentList();
                 updateSessionStatus();
-                
+
                 // Load saved session if exists
                 const savedSession = localStorage.getItem('currentSession');
                 if (savedSession) {
@@ -1470,7 +1521,7 @@
 
                 showNotification('Dashboard initialized successfully', 'success', 3000);
                 console.log('Dashboard initialized with', students.length, 'students');
-                
+
             } catch (error) {
                 console.error('Dashboard initialization error:', error);
                 showNotification('Error initializing dashboard: ' + error.message, 'error');
@@ -1499,6 +1550,7 @@
             document.getElementById('refreshFeedBtn')?.addEventListener('click', refreshFeed);
             document.getElementById('exportExcelBtn')?.addEventListener('click', exportAttendance);
             document.getElementById('downloadReportBtn')?.addEventListener('click', downloadReport);
+            document.getElementById('exportStudentsBtn')?.addEventListener('click', exportStudents);
 
             // Input validation
             if (elements.newStudentRoll) {
@@ -1534,47 +1586,101 @@
         }
 
         // QR Code Functions
-        async function generateQRCode() {
-            if (!checkLibrariesLoaded()) return;
+        async function generateQRCode(event) {
+            console.log('generateQRCode function called', event);
 
             console.log('=== Starting QR Code Generation ===');
-            
+
             // Get form values with validation
             const subject = elements.subjectSelect?.value || '';
             const room = elements.roomInput?.value || 'Classroom';
             const enableGeo = elements.enableGeolocation?.checked || false;
             const maxDistance = parseInt(elements.maxDistance?.value || CONFIG.maxDistance);
-            
+
             console.log('Form values:', { subject, room, enableGeo, maxDistance });
-            
+
             if (!subject) {
+                console.log('No subject selected, aborting QR code generation');
                 showNotification('Please select a subject', 'error');
                 return;
             }
 
             try {
+                console.log('Setting loading state for generate button');
                 // Set loading state
                 setLoading('generateQRBtn', true);
 
                 // Handle geolocation if enabled
+                let locationData = null;
                 if (enableGeo) {
+                    console.log('Geolocation enabled, handling geolocation for session');
                     await handleGeolocationForSession();
+                    if (facultyLocation) {
+                        locationData = {
+                            latitude: facultyLocation.latitude,
+                            longitude: facultyLocation.longitude,
+                            maxDistance: maxDistance
+                        };
+                    }
+                } else {
+                    console.log('Geolocation not enabled, skipping geolocation handling');
                 }
 
-                // Create session
-                await createAttendanceSession(subject, room, enableGeo, maxDistance);
+                // Get faculty ID from JWT token
+                const facultyId = JSON.parse(atob(jwtToken.split('.')[1])).userId;
 
-                // Generate and display QR code
-                const qrData = buildQRData();
-                const qrSuccess = await createQRDisplay(qrData);
-                
+                // Call backend API to generate QR
+                const response = await fetch(`${API_BASE}/api/faculty/generate-qr`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({
+                        facultyId,
+                        subject,
+                        room,
+                        geoRequired: enableGeo,
+                        location: locationData
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to generate QR code');
+                }
+
+                const data = await response.json();
+                console.log('QR generation response:', data);
+
+                // Store session data
+                currentSession = {
+                    id: data.sessionId,
+                    subject: data.subject,
+                    room: data.room,
+                    startTime: new Date(),
+                    endTime: new Date(data.expiresAt),
+                    active: true,
+                    geolocationRequired: data.geoRequired,
+                    facultyLocation: locationData,
+                    maxDistance: maxDistance,
+                    qrCode: data.qrCode,
+                    checkInURL: data.checkInURL
+                };
+
+                // Save session
+                localStorage.setItem('currentSession', JSON.stringify(currentSession));
+
+                // Display QR code from backend response
+                const qrSuccess = await createQRDisplayFromDataURL(data.qrCode);
+
                 if (!qrSuccess) {
-                    throw new Error('Failed to generate QR code display');
+                    throw new Error('Failed to display QR code');
                 }
 
                 // Start session management
+                console.log('Starting session timer');
                 startSessionTimer();
-                startCheckInMonitoring();
 
                 // Update UI
                 updateSessionStatus();
@@ -1588,7 +1694,113 @@
                 showNotification('Failed to generate QR code: ' + error.message, 'error');
                 resetQRDisplay();
             } finally {
+                console.log('Resetting loading state for generate button');
                 setLoading('generateQRBtn', false);
+            }
+        }
+
+        // Connect to Socket.io
+        function connectSocket() {
+            socket = io(API_BASE, {
+                auth: {
+                    token: jwtToken
+                }
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to Socket.io');
+                // Join faculty room
+                const facultyId = JSON.parse(atob(jwtToken.split('.')[1])).userId;
+                socket.emit('join_faculty_dashboard', { facultyId, authToken: jwtToken });
+            });
+
+            socket.on('room_joined', (data) => {
+                console.log('Joined faculty room:', data.roomName);
+            });
+
+            socket.on('qr_generated', (data) => {
+                console.log('QR generated event:', data);
+                // Handle QR generation event if needed
+            });
+
+            socket.on('qr_regenerated', (data) => {
+                console.log('QR regenerated event:', data);
+                // Handle QR regeneration event if needed
+            });
+
+            socket.on('attendance_marked', (data) => {
+                console.log('Real-time attendance:', data);
+                handleRealTimeAttendance(data);
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from Socket.io');
+            });
+
+            socket.on('error', (error) => {
+                console.error('Socket error:', error);
+                showNotification('Connection error: ' + error.message, 'error');
+            });
+        }
+
+        // Handle real-time attendance updates
+        function handleRealTimeAttendance(data) {
+            // Add to attendance data
+            const record = {
+                id: generateId(),
+                sessionId: data.sessionId,
+                studentId: data.studentId,
+                studentRoll: data.studentId, // Assuming studentId is roll
+                studentName: data.studentName,
+                status: data.status,
+                timestamp: new Date(data.timestamp),
+                location: data.location,
+                distance: data.distance
+            };
+
+            attendanceData.push(record);
+            saveAttendance();
+            addToFeed(record);
+            updateFeedStats();
+            showNotification(`${data.studentName} checked in (${data.status})`, 'success');
+        }
+
+        function setupEventListeners() {
+            console.log('Setting up event listeners');
+            // QR Generation
+            if (elements.generateQRBtn) {
+                console.log('Attaching click event to generateQRBtn');
+                elements.generateQRBtn.addEventListener('click', generateQRCode);
+            } else {
+                console.error('generateQRBtn element not found');
+            }
+            if (elements.regenerateQRBtn) elements.regenerateQRBtn.addEventListener('click', regenerateQRCode);
+            if (elements.endSessionBtn) elements.endSessionBtn.addEventListener('click', endSession);
+
+            // Geolocation
+            if (elements.enableGeolocation) elements.enableGeolocation.addEventListener('change', toggleGeolocation);
+            if (elements.setLocationBtn) elements.setLocationBtn.addEventListener('click', setFacultyLocation);
+
+            // Student management
+            document.getElementById('addStudentBtn')?.addEventListener('click', addStudent);
+            document.getElementById('importExcelBtn')?.addEventListener('click', () => {
+                elements.excelFileInput?.click();
+            });
+            document.getElementById('downloadTemplateBtn')?.addEventListener('click', downloadTemplate);
+            if (elements.excelFileInput) elements.excelFileInput.addEventListener('change', handleExcelImport);
+
+            // Feed controls
+            document.getElementById('refreshFeedBtn')?.addEventListener('click', refreshFeed);
+            document.getElementById('exportExcelBtn')?.addEventListener('click', exportAttendance);
+            document.getElementById('downloadReportBtn')?.addEventListener('click', downloadReport);
+            document.getElementById('exportStudentsBtn')?.addEventListener('click', exportStudents);
+
+            // Input validation
+            if (elements.newStudentRoll) {
+                elements.newStudentRoll.addEventListener('input', validateStudentInput);
+            }
+            if (elements.newStudentName) {
+                elements.newStudentName.addEventListener('input', validateStudentInput);
             }
         }
 
@@ -1672,54 +1884,11 @@
             }
         }
 
-        async function createAttendanceSession(subject, room, enableGeo, maxDistance) {
-            const sessionId = generateSessionId();
-            const startTime = new Date();
-            const endTime = new Date(startTime.getTime() + CONFIG.sessionDuration);
-            
-            currentSession = {
-                id: sessionId,
-                subject,
-                room,
-                startTime,
-                endTime,
-                active: true,
-                geolocationRequired: enableGeo,
-                facultyLocation: facultyLocation,
-                maxDistance: maxDistance
-            };
 
-            // Save session
-            localStorage.setItem('currentSession', JSON.stringify(currentSession));
-            
-            console.log('Session created:', {
-                ...currentSession,
-                startTime: startTime.toISOString(),
-                endTime: endTime.toISOString()
-            });
-        }
 
-        function buildQRData() {
-            const sessionData = {
-                sessionId: currentSession.id,
-                subject: currentSession.subject,
-                room: currentSession.room,
-                startTime: currentSession.startTime.toISOString(),
-                endTime: currentSession.endTime.toISOString(),
-                geoRequired: currentSession.geolocationRequired,
-                location: currentSession.facultyLocation,
-                maxDistance: currentSession.maxDistance,
-                timestamp: Date.now()
-            };
+        function createQRDisplayFromDataURL(dataURL) {
+            console.log('=== Creating QR Display from Data URL ===');
 
-            const baseUrl = window.location.origin;
-            const encodedData = encodeURIComponent(JSON.stringify(sessionData));
-            return `${baseUrl}/student-checkin.html?data=${encodedData}`;
-        }
-
-        function createQRDisplay(data) {
-            console.log('=== Creating QR Display ===');
-            
             if (!elements.qrCanvas || !elements.qrCodeContainer) {
                 console.error('Required QR display elements not found');
                 return false;
@@ -1728,41 +1897,15 @@
             try {
                 // Clear previous QR code
                 elements.qrCanvas.innerHTML = '';
-                
-                // Use kjua if available, otherwise fall back to QRCode
-                if (typeof kjua !== 'undefined') {
-                    const qr = kjua({
-                        render: 'canvas',
-                        crisp: true,
-                        minVersion: 1,
-                        ecLevel: 'M',
-                        size: 300,
-                        ratio: null,
-                        fill: '#1e293b',
-                        back: '#ffffff',
-                        text: data,
-                        rounded: 10,
-                        quiet: 2,
-                        mode: 'plain',
-                        mSize: 5,
-                        mPosX: 50,
-                        mPosY: 50,
-                        mSize: 30
-                    });
-                    elements.qrCanvas.appendChild(qr);
-                } else if (typeof QRCode !== 'undefined') {
-                    // Fallback to original QRCode library
-                    new QRCode(elements.qrCanvas, {
-                        text: data,
-                        width: 300,
-                        height: 300,
-                        colorDark: '#1e293b',
-                        colorLight: '#ffffff',
-                        correctLevel: QRCode.CorrectLevel.M
-                    });
-                } else {
-                    throw new Error('No QR code library available');
-                }
+
+                // Create image element for the QR code
+                const img = document.createElement('img');
+                img.src = dataURL;
+                img.style.width = '300px';
+                img.style.height = '300px';
+                img.style.display = 'block';
+                img.style.margin = '0 auto';
+                elements.qrCanvas.appendChild(img);
 
                 // Update display
                 if (elements.qrPlaceholder) elements.qrPlaceholder.style.display = 'none';
@@ -1771,12 +1914,12 @@
                 // Update session info
                 updateSessionInfo();
 
-                console.log('QR Display updated successfully');
+                console.log('QR Display updated successfully from backend');
                 return true;
-                
+
             } catch (error) {
                 console.error('QR Display error:', error);
-                showNotification('Failed to generate QR code display', 'error');
+                showNotification('Failed to display QR code', 'error');
                 return false;
             }
         }
@@ -1792,46 +1935,124 @@
             }
         }
 
-        function regenerateQRCode() {
+        async function regenerateQRCode() {
             if (!currentSession?.active) {
                 showNotification('No active session', 'error');
                 return;
             }
 
-            // Extend session
-            currentSession.endTime = new Date(Date.now() + CONFIG.sessionDuration);
-            localStorage.setItem('currentSession', JSON.stringify(currentSession));
+            try {
+                setLoading('regenerateQRBtn', true);
 
-            generateQRCode();
-            showNotification('QR Code regenerated', 'success');
-        }
+                // Get faculty ID from JWT token
+                const facultyId = JSON.parse(atob(jwtToken.split('.')[1])).userId;
 
-        function endSession() {
-            if (!currentSession) return;
+                // Call backend API to regenerate QR
+                const response = await fetch(`${API_BASE}/api/faculty/regenerate-qr/${currentSession.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({ facultyId })
+                });
 
-            if (confirm('End the current session? This will mark remaining students as absent.')) {
-                currentSession.active = false;
-                currentSession.actualEndTime = new Date();
-
-                // Stop timer
-                if (sessionTimer) {
-                    clearInterval(sessionTimer);
-                    sessionTimer = null;
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to regenerate QR code');
                 }
 
-                // Mark remaining students as absent
-                markRemainingAbsent();
+                const data = await response.json();
+                console.log('QR regeneration response:', data);
+
+                // Update session data
+                currentSession.endTime = new Date(data.expiresAt);
+                currentSession.qrCode = data.qrCode;
+                currentSession.checkInURL = data.checkInURL;
+
+                // Save session
+                localStorage.setItem('currentSession', JSON.stringify(currentSession));
+
+                // Display new QR code
+                const qrSuccess = await createQRDisplayFromDataURL(data.qrCode);
+
+                if (!qrSuccess) {
+                    throw new Error('Failed to display regenerated QR code');
+                }
+
+                // Restart timer
+                startSessionTimer();
 
                 // Update UI
                 updateSessionStatus();
-                updateActionButtons();
-                resetQRDisplay();
+                updateSessionInfo();
 
-                // Clear session
-                localStorage.removeItem('currentSession');
-                currentSession = null;
+                showNotification('QR Code regenerated successfully', 'success');
 
-                showNotification('Session ended successfully', 'success');
+            } catch (error) {
+                console.error('QR regeneration error:', error);
+                showNotification('Failed to regenerate QR code: ' + error.message, 'error');
+            } finally {
+                setLoading('regenerateQRBtn', false);
+            }
+        }
+
+        async function endSession() {
+            if (endingSession) return;
+            endingSession = true;
+
+            if (!currentSession) {
+                endingSession = false;
+                return;
+            }
+
+            if (confirm('End the current session? This will mark remaining students as absent.')) {
+                try {
+                    // Call backend to end session
+                    const response = await fetch(`${API_BASE}/api/faculty/end-session/${currentSession.id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${jwtToken}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to end session');
+                    }
+
+                    console.log('Session ended on backend');
+
+                    currentSession.active = false;
+                    currentSession.actualEndTime = new Date();
+
+                    // Stop timer
+                    if (sessionTimer) {
+                        clearInterval(sessionTimer);
+                        sessionTimer = null;
+                    }
+
+                    // Mark remaining students as absent (local)
+                    markRemainingAbsent();
+
+                    // Update UI
+                    updateSessionStatus();
+                    updateActionButtons();
+                    resetQRDisplay();
+
+                    // Clear session
+                    localStorage.removeItem('currentSession');
+                    currentSession = null;
+
+                    showNotification('Session ended successfully', 'success');
+
+                } catch (error) {
+                    console.error('End session error:', error);
+                    showNotification('Failed to end session: ' + error.message, 'error');
+                }
+            } else {
+                endingSession = false;
             }
         }
 
@@ -1877,11 +2098,11 @@
             updateSessionStatus();
             updateActionButtons();
             startSessionTimer();
-            startCheckInMonitoring();
             
-            // Recreate QR code
-            const qrData = buildQRData();
-            createQRDisplay(qrData);
+            // Recreate QR code from stored data
+            if (currentSession.qrCode) {
+                createQRDisplayFromDataURL(currentSession.qrCode);
+            }
             initializeFeed();
         }
 
@@ -1920,51 +2141,7 @@
             }
         }
 
-        // Real-time check-in monitoring
-        function startCheckInMonitoring() {
-            const checkExistingCheckins = () => {
-                try {
-                    const checkins = JSON.parse(localStorage.getItem('studentCheckins') || '[]');
-                    const sessionCheckins = checkins.filter(c => c.sessionId === currentSession?.id);
-                    
-                    sessionCheckins.forEach(checkin => {
-                        if (!attendanceData.find(a => a.studentRoll === checkin.studentRoll && a.sessionId === checkin.sessionId)) {
-                            const student = students.find(s => s.roll === checkin.studentRoll);
-                            if (student) {
-                                const record = createAttendanceRecord(student, checkin);
-                                
-                                attendanceData.push(record);
-                                student.attendanceHistory = student.attendanceHistory || [];
-                                student.attendanceHistory.push(record);
-                                saveAttendance();
-                                addToFeed(record);
-                                updateFeedStats();
-                                showNotification(`${record.studentName} checked in successfully!`, 'success');
-                            }
-                        }
-                    });
-                } catch (error) {
-                    console.error('Error checking for new check-ins:', error);
-                }
-            };
 
-            // Check every 2 seconds for new check-ins
-            const monitoringInterval = setInterval(() => {
-                if (!currentSession?.active) {
-                    clearInterval(monitoringInterval);
-                    return;
-                }
-                checkExistingCheckins();
-            }, 2000);
-
-            // Listen for custom events
-            window.addEventListener('studentCheckedIn', (event) => {
-                console.log('Received real-time check-in:', event.detail);
-                setTimeout(checkExistingCheckins, 500);
-            });
-
-            checkExistingCheckins();
-        }
 
         function createAttendanceRecord(student, checkin) {
             return {
@@ -2195,20 +2372,15 @@
         // Attendance Functions
         function initializeFeed() {
             if (!elements.attendanceFeed) return;
-            
+
             elements.attendanceFeed.innerHTML = `
                 <div class="no-data">
                     <i class="fas fa-satellite-dish"></i>
                     <p>Waiting for students to check in...</p>
                 </div>
             `;
-            
+
             updateFeedStats();
-            
-            // Clear existing check-ins for this session
-            const existingCheckins = JSON.parse(localStorage.getItem('studentCheckins') || '[]');
-            const otherSessionCheckins = existingCheckins.filter(c => c.sessionId !== currentSession?.id);
-            localStorage.setItem('studentCheckins', JSON.stringify(otherSessionCheckins));
         }
 
         function addToFeed(record) {
@@ -2292,38 +2464,36 @@
         }
 
         // Export Functions
-        function exportAttendance() {
-            if (!currentSession || attendanceData.length === 0) {
-                showNotification('No attendance data to export', 'warning');
+        async function exportAttendance() {
+            if (!currentSession) {
+                showNotification('No active session to export', 'warning');
                 return;
             }
 
             try {
-                const sessionData = attendanceData.filter(a => a.sessionId === currentSession.id);
-                
-                const data = [
-                    ['Session', 'Subject', 'Date', 'Roll', 'Name', 'Status', 'Time', 'Distance']
-                ];
-
-                sessionData.forEach(record => {
-                    data.push([
-                        currentSession.id,
-                        currentSession.subject,
-                        new Date(currentSession.startTime).toLocaleDateString(),
-                        record.studentRoll,
-                        record.studentName,
-                        record.status.toUpperCase(),
-                        record.timestamp.toLocaleString(),
-                        record.distance ? `${Math.round(record.distance)}m` : 'N/A'
-                    ]);
+                // Call backend to get export
+                const response = await fetch(`${API_BASE}/api/faculty/export-attendance/${currentSession.id}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`
+                    }
                 });
 
-                const ws = XLSX.utils.aoa_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to export attendance');
+                }
 
-                const filename = `attendance_${currentSession.subject}_${new Date().toISOString().split('T')[0]}.xlsx`;
-                XLSX.writeFile(wb, filename);
+                // Get blob and download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `attendance_${currentSession.subject}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
 
                 showNotification('Attendance exported successfully', 'success');
 
@@ -2400,14 +2570,31 @@
 
         // Test function
         function testQRCode() {
-            if (!currentSession?.active) {
+            if (!currentSession?.active || !currentSession.checkInURL) {
                 showNotification('Please generate a QR code first', 'warning');
                 return;
             }
 
-            const testUrl = buildQRData();
-            window.open(testUrl, '_blank');
+            window.open(currentSession.checkInURL, '_blank');
             showNotification('Test page opened in new tab', 'info');
+        }
+
+        // Download QR Code function
+        function downloadQRCode() {
+            if (!currentSession?.active || !currentSession.qrCode) {
+                showNotification('Please generate a QR code first', 'warning');
+                return;
+            }
+
+            // Create download link
+            const link = document.createElement('a');
+            link.download = `attendance-qr-${currentSession.id}.png`;
+            link.href = currentSession.qrCode;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showNotification('QR code downloaded successfully', 'success');
         }
 
         // Utility Functions
@@ -2494,6 +2681,41 @@
         window.removeStudent = removeStudent;
         window.logout = logout;
         window.testQRCode = testQRCode;
+
+        // Export student roster to Excel
+        function exportStudents() {
+            if (students.length === 0) {
+                showNotification('No students to export', 'warning');
+                return;
+            }
+
+            try {
+                const data = [
+                    ['Roll', 'Name', 'Email', 'Added Date']
+                ];
+
+                students.forEach(student => {
+                    data.push([
+                        student.roll,
+                        student.name,
+                        student.email || '',
+                        new Date(student.addedAt).toLocaleDateString()
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Students');
+
+                const filename = `student_roster_${new Date().toISOString().split('T')[0]}.xlsx`;
+                XLSX.writeFile(wb, filename);
+
+                showNotification('Student roster exported successfully', 'success');
+            } catch (error) {
+                console.error('Export students error:', error);
+                showNotification('Failed to export students: ' + error.message, 'error');
+            }
+        }
     </script>
 </body>
 </html>

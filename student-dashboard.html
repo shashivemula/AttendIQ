@@ -10,6 +10,1051 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <style>
+    /* Compact Header Section */
+    .student-header {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .student-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(139, 92, 246, 0.05));
+      pointer-events: none;
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      z-index: 2;
+      gap: 2rem;
+    }
+
+    .welcome-section {
+      flex: 1;
+    }
+
+    .welcome-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .welcome-subtitle {
+      color: var(--gray-text);
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+
+    .quick-stats {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .stat-item {
+      text-align: center;
+      min-width: 80px;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      display: block;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--gray-text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 0.25rem;
+    }
+
+    .header-avatar {
+      width: 60px;
+      height: 60px;
+      background: var(--gradient-primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .dashboard-sections {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    .main-section {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 2rem;
+    }
+
+    .qr-scanner-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--shadow-heavy);
+    }
+
+    .scanner-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .scanner-icon {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+    }
+
+    .scanner-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .scanner-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .control-btn {
+      padding: 0.75rem 1rem;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(107, 114, 128, 0.1);
+      color: var(--text-color);
+      border: 1px solid rgba(107, 114, 128, 0.3);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(107, 114, 128, 0.2);
+    }
+
+    .btn-accent {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+    }
+
+    .btn-accent:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3);
+    }
+
+    .scanner-display {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 16px;
+      padding: 1.5rem;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .manual-entry-form {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: none;
+    }
+
+    .form-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text-color);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .attendance-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--shadow-heavy);
+    }
+
+    .attendance-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .attendance-icon {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+    }
+
+    .attendance-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .attendance-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .attendance-item {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .attendance-item:hover {
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 8px;
+    }
+
+    .attendance-item:last-child {
+      border-bottom: none;
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .subject-name {
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-present {
+      background: rgba(16, 185, 129, 0.1);
+      color: #059669;
+    }
+
+    .status-absent {
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+    }
+
+    .status-late {
+      background: rgba(245, 158, 11, 0.1);
+      color: #d97706;
+    }
+
+    .item-meta {
+      font-size: 0.9rem;
+      color: var(--gray-text);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .quick-actions {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--shadow-heavy);
+    }
+
+    .quick-actions-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .quick-actions-icon {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+    }
+
+    .quick-actions-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .action-btn {
+      padding: 1rem;
+      border: none;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      text-decoration: none;
+      color: var(--text-color);
+    }
+
+    .action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .action-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .scan-status {
+      text-align: center;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      font-weight: 500;
+    }
+
+    .status-ready {
+      background: rgba(16, 185, 129, 0.1);
+      color: #059669;
+    }
+
+    .status-scanning {
+      background: rgba(59, 130, 246, 0.1);
+      color: #2563eb;
+    }
+
+    .status-error {
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+    }
+
+    /* Tab Navigation Styles */
+    .dashboard-tabs {
+      display: flex;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 0.5rem;
+      margin-bottom: 2rem;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 120px;
+      padding: 0.75rem 1rem;
+      border: none;
+      background: transparent;
+      color: var(--gray-text);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .tab-btn:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-color);
+    }
+
+    .tab-btn.active {
+      background: var(--gradient-primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Profile Section Styles */
+    .profile-section {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .profile-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--shadow-heavy);
+    }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .profile-avatar {
+      width: 80px;
+      height: 80px;
+      background: var(--gradient-primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 2rem;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .profile-avatar:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .avatar-upload-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      color: white;
+      font-size: 1.5rem;
+    }
+
+    .profile-avatar:hover .avatar-upload-overlay {
+      opacity: 1;
+    }
+
+    .photo-upload-section {
+      background: rgba(0, 0, 0, 0.02);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .photo-upload-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .photo-upload-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.2rem;
+    }
+
+    .photo-upload-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text-color);
+    }
+
+    .photo-upload-controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .photo-upload-btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      background: var(--gradient-primary);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .photo-upload-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .photo-upload-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .photo-preview {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 12px;
+      border: 2px solid var(--primary-color);
+      display: none;
+      margin-top: 1rem;
+    }
+
+    .photo-status {
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .photo-status-uploaded {
+      background: rgba(16, 185, 129, 0.1);
+      color: #059669;
+    }
+
+    .photo-status-missing {
+      background: rgba(245, 158, 11, 0.1);
+      color: #d97706;
+    }
+
+    .upload-progress {
+      width: 100%;
+      height: 4px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .upload-progress-bar {
+      height: 100%;
+      background: var(--gradient-primary);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .profile-info h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.8rem;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .profile-info p {
+      margin: 0 0 0.5rem 0;
+      color: var(--gray-text);
+    }
+
+    .student-id {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .profile-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .detail-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .detail-item i {
+      color: var(--primary-color);
+      font-size: 1.5rem;
+      width: 30px;
+    }
+
+    .detail-label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--gray-text);
+      margin-bottom: 0.25rem;
+    }
+
+    .detail-value {
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    /* Courses Section Styles */
+    .courses-section {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .section-header h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section-header p {
+      color: var(--gray-text);
+      font-size: 1.1rem;
+    }
+
+    .courses-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .course-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .course-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .course-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .course-icon {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+    }
+
+    .course-info h3 {
+      margin: 0 0 0.25rem 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .course-faculty {
+      color: var(--gray-text);
+      font-size: 0.9rem;
+    }
+
+    .course-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      color: var(--gray-text);
+    }
+
+    /* History Section Styles */
+    .history-section {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .history-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .history-filters {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-select,
+    .filter-input {
+      padding: 0.75rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+    }
+
+    .filter-select:focus,
+    .filter-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .attendance-history-list {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .history-item {
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .history-item:hover {
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .history-subject {
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .history-status {
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .history-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      font-size: 0.9rem;
+      color: var(--gray-text);
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Notification Styles */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      box-shadow: var(--shadow-heavy);
+      z-index: 1000;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      max-width: 400px;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification-content {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .notification-content i {
+      color: var(--primary-color);
+      font-size: 1.2rem;
+    }
+
+    .notification-success .notification-content i {
+      color: #10b981;
+    }
+
+    .notification-error .notification-content i {
+      color: #ef4444;
+    }
+
+    .notification-warning .notification-content i {
+      color: #f59e0b;
+    }
+
+    .notification-info .notification-content i {
+      color: var(--primary-color);
+    }
+
+    .notification-close {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: none;
+      border: none;
+      color: var(--gray-text);
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .notification-close:hover {
+      background: rgba(0, 0, 0, 0.1);
+      color: var(--text-color);
+    }
+
+    .qr-activity {
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .qr-activity:hover {
+      background: rgba(59, 130, 246, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .status-pending {
+      background: rgba(245, 158, 11, 0.1);
+      color: #f59e0b;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-sections {
+        grid-template-columns: 1fr;
+      }
+
+      .welcome-title {
+        font-size: 1.5rem;
+      }
+
+      .quick-stats {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+
+      .header-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1.5rem;
+      }
+
+      .header-avatar {
+        align-self: center;
+      }
+
+      .scanner-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .actions-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .dashboard-tabs {
+        flex-direction: column;
+      }
+
+      .tab-btn {
+        min-width: auto;
+      }
+
+      .profile-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+      }
+
+      .profile-details {
+        grid-template-columns: 1fr;
+      }
+
+      .courses-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .history-filters {
+        flex-direction: column;
+      }
+    }
+  </style>
 </head>
 <body>
   <nav class="navbar">
@@ -27,64 +1072,296 @@
     </div>
   </nav>
 
-  <main class="faculty-main">
+  <!-- Compact Header Section -->
+  <section class="student-header" style="margin-top: 80px;">
     <div class="container">
-      <div class="faculty-header">
-        <div class="header-content">
-          <h1 class="gradient-title">Welcome, Student</h1>
-          <p class="header-subtitle">Scan QR to mark attendance and view your history</p>
+      <div class="header-content">
+        <div class="welcome-section">
+          <h1 class="welcome-title">Welcome back, Student! 🎓</h1>
+          <p class="welcome-subtitle">Ready to mark your attendance? Scan QR codes and stay on top of your academic journey.</p>
+
+          <div class="quick-stats">
+            <div class="stat-item">
+              <span class="stat-value" id="totalClasses">0</span>
+              <span class="stat-label">Total Classes</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="presentCount">0</span>
+              <span class="stat-label">Present</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="myRate">0%</span>
+              <span class="stat-label">Attendance Rate</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="streakCount">0</span>
+              <span class="stat-label">Day Streak</span>
+            </div>
+          </div>
         </div>
-        <div class="header-stats">
-          <div class="stat-bubble">
-            <span id="totalClasses" class="stat-number">0</span>
-            <span class="stat-label">Total Classes</span>
+
+        <div class="header-avatar">
+          <i class="fas fa-user-graduate"></i>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="container">
+    <!-- Navigation Tabs -->
+    <div class="dashboard-tabs">
+      <button class="tab-btn active" onclick="switchTab('dashboard')">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </button>
+      <button class="tab-btn" onclick="switchTab('profile')">
+        <i class="fas fa-user"></i> Profile
+      </button>
+      <button class="tab-btn" onclick="switchTab('courses')">
+        <i class="fas fa-book"></i> My Courses
+      </button>
+      <button class="tab-btn" onclick="switchTab('history')">
+        <i class="fas fa-history"></i> Attendance History
+      </button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div id="dashboardTab" class="tab-content active">
+      <div class="dashboard-sections">
+        <!-- Main Section -->
+        <div class="main-section">
+          <!-- QR Scanner Card -->
+          <div class="qr-scanner-card">
+            <div class="scanner-header">
+              <div class="scanner-icon">
+                <i class="fas fa-qrcode"></i>
+              </div>
+              <h2 class="scanner-title">QR Code Scanner</h2>
+            </div>
+
+            <div class="scanner-controls">
+              <button id="startScan" class="control-btn btn-primary">
+                <i class="fas fa-play"></i>
+                <span>Start Camera</span>
+              </button>
+              <button id="stopScan" class="control-btn btn-secondary">
+                <i class="fas fa-stop"></i>
+                <span>Stop Camera</span>
+              </button>
+              <button id="manualEntry" class="control-btn btn-accent">
+                <i class="fas fa-keyboard"></i>
+                <span>Manual Entry</span>
+              </button>
+            </div>
+
+            <div id="reader" class="scanner-display">
+              <div style="text-align: center; color: var(--gray-text);">
+                <i class="fas fa-camera" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                <p>Click "Start Camera" to begin scanning QR codes</p>
+              </div>
+            </div>
+
+            <div id="manualEntryForm" class="manual-entry-form">
+              <h4 class="form-title">Manual QR Code Entry</h4>
+              <p style="color: var(--gray-text); margin-bottom: 1rem;">If your camera isn't working, enter the session code provided by your instructor:</p>
+              <input type="text" id="sessionCodeInput" placeholder="Enter session code (e.g., abc123)" class="form-input">
+              <button id="submitCode" class="control-btn btn-primary" style="width: 100%;">
+                <i class="fas fa-check"></i>
+                <span>Submit Code</span>
+              </button>
+            </div>
+
+            <div id="scanStatus" class="scan-status status-ready">
+              <i class="fas fa-info-circle"></i> Ready to scan. Click "Start Camera" to begin.
+            </div>
           </div>
-          <div class="stat-bubble">
-            <span id="presentCount" class="stat-number">0</span>
-            <span class="stat-label">Present</span>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <!-- Recent Attendance Card -->
+          <div class="attendance-card">
+            <div class="attendance-header">
+              <div class="attendance-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <h3 class="attendance-title">Recent Activity</h3>
+            </div>
+
+            <div id="recentAttendanceList" class="attendance-list">
+              <!-- Recent attendance items will be populated here -->
+            </div>
           </div>
-          <div class="stat-bubble">
-            <span id="myRate" class="stat-number">0%</span>
-            <span class="stat-label">Attendance</span>
+
+          <!-- Quick Actions Card -->
+          <div class="quick-actions">
+            <div class="quick-actions-header">
+              <div class="quick-actions-icon">
+                <i class="fas fa-bolt"></i>
+              </div>
+              <h3 class="quick-actions-title">Quick Actions</h3>
+            </div>
+
+            <div class="actions-grid">
+              <a href="#" class="action-btn" onclick="switchTab('history')">
+                <i class="fas fa-history action-icon"></i>
+                <span class="action-label">View History</span>
+              </a>
+              <a href="#" class="action-btn" onclick="loadDashboardData()">
+                <i class="fas fa-sync-alt action-icon"></i>
+                <span class="action-label">Refresh</span>
+              </a>
+              <a href="login.html" class="action-btn">
+                <i class="fas fa-sign-out-alt action-icon"></i>
+                <span class="action-label">Logout</span>
+              </a>
+              <a href="index.html" class="action-btn">
+                <i class="fas fa-home action-icon"></i>
+                <span class="action-label">Home</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="dashboard-grid">
-        <div class="dashboard-card glass-card">
-          <div class="card-header">
-            <div class="card-icon"><i class="fas fa-camera"></i></div>
-            <h3>Scan QR</h3>
-          </div>
-          <div class="action-buttons">
-            <button id="startScan" class="btn btn-primary btn-3d">
-              <i class="fas fa-play"></i><span>Start Camera</span>
-            </button>
-            <button id="stopScan" class="btn btn-secondary btn-3d">
-              <i class="fas fa-stop"></i><span>Stop Camera</span>
-            </button>
-            <button id="manualEntry" class="btn btn-accent btn-3d">
-              <i class="fas fa-keyboard"></i><span>Manual Entry</span>
-            </button>
-          </div>
-          <div id="reader" class="glass-display" style="margin-top:15px; width:100%; min-height:300px"></div>
-          <div id="manualEntryForm" class="glass-display" style="margin-top:15px; padding:20px; display:none;">
-            <h4>Manual QR Code Entry</h4>
-            <p>If your camera is not working, enter the session code provided by your instructor:</p>
-            <div style="margin:15px 0;">
-              <input type="text" id="sessionCodeInput" placeholder="Enter session code" class="form-input" style="width:100%; margin-bottom:10px;">
-              <button id="submitCode" class="btn btn-primary" style="width:100%;">Submit</button>
+    <!-- Profile Tab -->
+    <div id="profileTab" class="tab-content">
+      <div class="profile-section">
+        <div class="profile-card">
+          <div class="profile-header">
+            <div class="profile-avatar" id="profileAvatar" onclick="triggerPhotoUpload()">
+              <i class="fas fa-user-graduate"></i>
+              <div class="avatar-upload-overlay">
+                <i class="fas fa-camera"></i>
+              </div>
+            </div>
+            <div class="profile-info">
+              <h2 id="profileName">Loading...</h2>
+              <p id="profileEmail">Loading...</p>
+              <span class="student-id" id="profileStudentId">Loading...</span>
             </div>
           </div>
-          <p id="scanStatus" style="text-align:center;color:var(--gray-text);margin-top:10px"></p>
+
+          <!-- Photo Upload Section -->
+          <div class="photo-upload-section">
+            <div class="photo-upload-header">
+              <div class="photo-upload-icon">
+                <i class="fas fa-camera"></i>
+              </div>
+              <h3 class="photo-upload-title">Profile Photo</h3>
+            </div>
+
+            <div class="photo-upload-controls">
+              <input type="file" id="photoInput" accept="image/*" style="display: none;">
+              <button class="photo-upload-btn" id="uploadPhotoBtn" onclick="triggerPhotoUpload()">
+                <i class="fas fa-upload"></i>
+                <span>Upload Photo</span>
+              </button>
+              <button class="photo-upload-btn" id="removePhotoBtn" onclick="removePhoto()" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; display: none;">
+                <i class="fas fa-trash"></i>
+                <span>Remove Photo</span>
+              </button>
+              <span class="photo-status photo-status-missing" id="photoStatus">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>No photo uploaded</span>
+              </span>
+            </div>
+
+            <img id="photoPreview" class="photo-preview" style="display: none;" alt="Photo preview">
+            <div class="upload-progress" id="uploadProgress">
+              <div class="upload-progress-bar" id="uploadProgressBar"></div>
+            </div>
+          </div>
+
+          <div class="profile-details">
+            <div class="detail-item">
+              <i class="fas fa-id-card"></i>
+              <div>
+                <span class="detail-label">Student ID</span>
+                <span class="detail-value" id="detailStudentId">-</span>
+              </div>
+            </div>
+            <div class="detail-item">
+              <i class="fas fa-envelope"></i>
+              <div>
+                <span class="detail-label">Email</span>
+                <span class="detail-value" id="detailEmail">-</span>
+              </div>
+            </div>
+            <div class="detail-item">
+              <i class="fas fa-calendar-alt"></i>
+              <div>
+                <span class="detail-label">Joined Date</span>
+                <span class="detail-value" id="detailJoinedDate">-</span>
+              </div>
+            </div>
+            <div class="detail-item">
+              <i class="fas fa-chart-line"></i>
+              <div>
+                <span class="detail-label">Current Streak</span>
+                <span class="detail-value" id="detailStreak">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Courses Tab -->
+    <div id="coursesTab" class="tab-content">
+      <div class="courses-section">
+        <div class="section-header">
+          <h2>My Courses</h2>
+          <p>Courses assigned to you by faculty members</p>
         </div>
 
-        <div id="history" class="dashboard-card glass-card">
-          <div class="card-header">
-            <div class="card-icon"><i class="fas fa-list-check"></i></div>
-            <h3>My Attendance</h3>
+        <div id="coursesGrid" class="courses-grid">
+          <!-- Courses will be populated here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div id="historyTab" class="tab-content">
+      <div class="history-section">
+        <div class="section-header">
+          <h2>Attendance History</h2>
+          <p>Complete record of your attendance across all subjects</p>
+        </div>
+
+        <div class="history-stats">
+          <div class="stat-card">
+            <span class="stat-value" id="historyTotalSessions">0</span>
+            <span class="stat-label">Total Sessions</span>
           </div>
-          <div id="myAttendanceList" class="feed-list"></div>
+          <div class="stat-card">
+            <span class="stat-value" id="historyPresentCount">0</span>
+            <span class="stat-label">Present</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="historyLateCount">0</span>
+            <span class="stat-label">Late</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="historyAttendanceRate">0%</span>
+            <span class="stat-label">Attendance Rate</span>
+          </div>
+        </div>
+
+        <div class="history-filters">
+          <select id="subjectFilter" class="filter-select">
+            <option value="">All Subjects</option>
+          </select>
+          <select id="statusFilter" class="filter-select">
+            <option value="">All Status</option>
+            <option value="present">Present</option>
+            <option value="late">Late</option>
+          </select>
+          <input type="date" id="dateFilter" class="filter-input">
+        </div>
+
+        <div id="attendanceHistoryList" class="attendance-history-list">
+          <!-- History items will be populated here -->
         </div>
       </div>
     </div>
@@ -94,18 +1371,23 @@
     let html5QrcodeScanner = null;
     const readerEl = document.getElementById('reader');
     const statusEl = document.getElementById('scanStatus');
-    
+
     function checkBrowserCompatibility() {
       const isCompatible = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-      
+
       if (!isCompatible) {
-        statusEl.innerHTML = '<span style="color:#ef4444;">⚠️ Your browser may not support camera access. Please use Chrome, Safari, or another modern browser, or use the Manual Entry option.</span>';
+        updateScanStatus('error', '⚠️ Your browser may not support camera access. Please use Chrome, Safari, or another modern browser, or use the Manual Entry option.');
         document.getElementById('manualEntry').style.backgroundColor = 'var(--primary-color)';
       } else {
-        statusEl.textContent = 'Ready to scan. Click "Start Camera" to begin.';
+        updateScanStatus('ready', 'Ready to scan. Click "Start Camera" to begin.');
       }
-      
+
       return isCompatible;
+    }
+
+    function updateScanStatus(type, message) {
+      statusEl.className = `scan-status status-${type}`;
+      statusEl.innerHTML = `<i class="fas fa-${type === 'ready' ? 'info-circle' : type === 'scanning' ? 'spinner fa-spin' : 'exclamation-circle'}"></i> ${message}`;
     }
 
     function startCam() {
@@ -118,14 +1400,14 @@
 
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          statusEl.textContent = 'Camera access not supported by your browser. Please try using a modern browser like Chrome or Safari.';
+          updateScanStatus('error', 'Camera access not supported by your browser. Please try using a modern browser like Chrome or Safari.');
           return;
         }
 
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
           .then(stream => {
             stream.getTracks().forEach(track => track.stop());
-            
+
             html5QrcodeScanner = new Html5Qrcode("reader");
             html5QrcodeScanner.start(
               { facingMode: "environment" },
@@ -136,36 +1418,36 @@
               onScanSuccess,
               onScanError
             ).then(() => {
-          statusEl.textContent = 'Scanner running...';
+          updateScanStatus('scanning', 'Scanner running... Point your camera at a QR code.');
         }).catch(err => {
           console.error("Camera start error:", err);
-          
+
           if (err.toString().includes('Permission denied') || err.toString().includes('NotAllowedError')) {
-            statusEl.textContent = 'Camera permission denied. Please allow camera access and try again.';
+            updateScanStatus('error', 'Camera permission denied. Please allow camera access and try again.');
           } else if (err.toString().includes('NotFoundError') || err.toString().includes('DevicesNotFoundError')) {
-            statusEl.textContent = 'No camera found. Please ensure your device has a working camera.';
+            updateScanStatus('error', 'No camera found. Please ensure your device has a working camera.');
           } else if (err.toString().includes('NotReadableError') || err.toString().includes('TrackStartError')) {
-            statusEl.textContent = 'Camera is in use by another application. Please close other apps using the camera.';
+            updateScanStatus('error', 'Camera is in use by another application. Please close other apps using the camera.');
           } else if (err.toString().includes('OverconstrainedError')) {
-            statusEl.textContent = 'Camera constraints not satisfied. Try using a different browser.';
+            updateScanStatus('error', 'Camera constraints not satisfied. Try using a different browser.');
           } else {
-            statusEl.textContent = 'Camera error: ' + err;
+            updateScanStatus('error', 'Camera error: ' + err);
           }
-          
+
           html5QrcodeScanner = null;
         });
       }).catch(err => {
         console.error("Camera permission error:", err);
-        
+
         if (err.toString().includes('Permission denied') || err.toString().includes('NotAllowedError')) {
-          statusEl.textContent = 'Camera permission denied. Please allow camera access in your browser settings and try again.';
+          updateScanStatus('error', 'Camera permission denied. Please allow camera access in your browser settings and try again.');
         } else {
-          statusEl.textContent = 'Camera access error: ' + err;
+          updateScanStatus('error', 'Camera access error: ' + err);
         }
       });
       } catch (e) {
         console.error("Init error:", e);
-        statusEl.textContent = 'Scanner initialization failed. Please try using a different browser or device.';
+        updateScanStatus('error', 'Scanner initialization failed. Please try using a different browser or device.');
       }
     }
 
@@ -174,24 +1456,27 @@
       html5QrcodeScanner.stop().then(() => {
         html5QrcodeScanner.clear();
         html5QrcodeScanner = null;
-        statusEl.textContent = 'Scanner stopped';
+        updateScanStatus('ready', 'Scanner stopped. Click "Start Camera" to scan again.');
       }).catch(err => console.error("Stop error:", err));
     }
 
     function onScanSuccess(decodedText) {
       stopCam();
-      statusEl.textContent = 'QR detected, processing...';
+      updateScanStatus('ready', 'QR detected, processing...');
 
       if (decodedText.includes('/checkin.html') || decodedText.includes('session=')) {
         try {
-          window.location.href = decodedText;
+          // Add a small delay to show the success message
+          setTimeout(() => {
+            window.location.href = decodedText;
+          }, 500);
         } catch (error) {
-          statusEl.textContent = 'Invalid QR content';
+          updateScanStatus('error', 'Invalid QR content. Please try scanning again.');
         }
       } else {
-        statusEl.textContent = 'Invalid QR code. Please scan AttendIQ QR code.';
+        updateScanStatus('error', 'Invalid QR code. Please scan an AttendIQ QR code.');
         setTimeout(() => {
-          statusEl.textContent = 'Ready to scan';
+          updateScanStatus('ready', 'Ready to scan. Click "Start Camera" to begin.');
         }, 3000);
       }
     }
@@ -202,63 +1487,728 @@
 
     document.getElementById('startScan').addEventListener('click', startCam);
     document.getElementById('stopScan').addEventListener('click', stopCam);
-    
+
     document.getElementById('manualEntry').addEventListener('click', function() {
       const readerEl = document.getElementById('reader');
       const manualEntryForm = document.getElementById('manualEntryForm');
-      
+
       if (manualEntryForm.style.display === 'none') {
         // Stop camera if running
         stopCam();
-        
+
         // Hide reader and show manual entry
         readerEl.style.display = 'none';
         manualEntryForm.style.display = 'block';
-        statusEl.textContent = 'Manual entry mode';
+        updateScanStatus('ready', 'Manual entry mode - Enter session code below.');
         this.innerHTML = '<i class="fas fa-camera"></i><span>Use Camera</span>';
       } else {
         // Show reader and hide manual entry
         readerEl.style.display = 'block';
         manualEntryForm.style.display = 'none';
-        statusEl.textContent = 'Ready to scan';
+        updateScanStatus('ready', 'Ready to scan. Click "Start Camera" to begin.');
         this.innerHTML = '<i class="fas fa-keyboard"></i><span>Manual Entry</span>';
       }
     });
-    
+
     document.getElementById('submitCode').addEventListener('click', function() {
       const sessionCode = document.getElementById('sessionCodeInput').value.trim();
-      
+
       if (!sessionCode) {
-        statusEl.textContent = 'Please enter a session code';
+        updateScanStatus('error', 'Please enter a session code');
         return;
       }
-      
-      statusEl.textContent = 'Processing session code...';
-      
-      const checkInUrl = `student-checkin.html?session=${sessionCode}`;
-      
-      window.location.href = checkInUrl;
+
+      updateScanStatus('scanning', 'Processing session code...');
+
+      const checkInUrl = `checkin.html?session=${sessionCode}`;
+
+      // Add a small delay to show the processing message
+      setTimeout(() => {
+        window.location.href = checkInUrl;
+      }, 500);
     });
 
-    function loadMyAttendance() {
-      const data = JSON.parse(localStorage.getItem('myAttendance') || '[]');
-      const list = document.getElementById('myAttendanceList');
-      list.innerHTML = '';
-      data.slice().reverse().forEach(r => {
-        const item = document.createElement('div');
-        item.className = 'feed-item';
-        item.innerHTML = `
-          <div><strong>${r.classId || '-'}</strong> • ${new Date(r.ts).toLocaleString()} • ${r.status || '-'}</div>
-          <div class="feed-meta">Session ${r.sessionId || '-'}</div>`;
-        list.appendChild(item);
+    // Tab switching functionality
+    function switchTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
       });
 
-      const total = data.length;
-      const present = data.filter(r => r.status === 'Verified').length;
-      document.getElementById('totalClasses').textContent = total;
-      document.getElementById('presentCount').textContent = present;
-      document.getElementById('myRate').textContent = total ? Math.round(present * 100 / total) + '%' : '0%';
+      // Remove active class from all buttons
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      // Show selected tab
+      document.getElementById(tabName + 'Tab').classList.add('active');
+      event.target.classList.add('active');
+
+      // Load data for the selected tab
+      if (tabName === 'profile') loadProfileData();
+      if (tabName === 'courses') loadCoursesData();
+      if (tabName === 'history') loadHistoryData();
     }
+
+    // Load dashboard data
+    function loadDashboardData() {
+      loadRecentAttendance();
+      loadHeroStats();
+    }
+
+    // Load recent attendance for dashboard
+    function loadRecentAttendance() {
+      fetch('/api/student/attendance-history', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const list = document.getElementById('recentAttendanceList');
+          list.innerHTML = '';
+
+          if (data.history.length === 0) {
+            list.innerHTML = '<div style="text-align: center; color: var(--gray-text); padding: 2rem;">No recent attendance records. Start scanning QR codes!</div>';
+            return;
+          }
+
+          // Show only recent 5 records
+          const recentRecords = data.history.slice(0, 5);
+
+          recentRecords.forEach(record => {
+            const item = document.createElement('div');
+            item.className = 'attendance-item';
+
+            const statusClass = record.status === 'present' ? 'status-present' :
+                               record.status === 'late' ? 'status-late' : 'status-absent';
+
+            item.innerHTML = `
+              <div class="item-header">
+                <span class="subject-name">${record.subject}</span>
+                <span class="status-badge ${statusClass}">${record.status}</span>
+              </div>
+              <div class="item-meta">
+                <span>${new Date(record.timestamp).toLocaleDateString()}</span>
+                <span>${record.faculty_name}</span>
+              </div>
+            `;
+            list.appendChild(item);
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error loading recent attendance:', error);
+        document.getElementById('recentAttendanceList').innerHTML =
+          '<div style="text-align: center; color: var(--gray-text); padding: 2rem;">Error loading attendance data</div>';
+      });
+    }
+
+    // Load hero stats
+    function loadHeroStats() {
+      fetch('/api/student/attendance-history', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('totalClasses').textContent = data.stats.totalSessions;
+          document.getElementById('presentCount').textContent = data.stats.presentCount;
+          document.getElementById('myRate').textContent = data.stats.attendanceRate + '%';
+          document.getElementById('streakCount').textContent = data.stats.currentStreak;
+        }
+      })
+      .catch(error => console.error('Error loading hero stats:', error));
+    }
+
+    // Load profile data
+    function loadProfileData() {
+      // Check if user is logged in
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        showProfileError('Please log in to view your profile');
+        return;
+      }
+
+      fetch('/api/student/profile', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          if (response.status === 401) {
+            showProfileError('Session expired. Please log in again.');
+            return;
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          const profile = data.profile;
+          document.getElementById('profileName').textContent = profile.name || 'Unknown Student';
+          document.getElementById('profileEmail').textContent = profile.email || 'No email';
+          document.getElementById('profileStudentId').textContent = profile.studentId || 'No ID';
+          document.getElementById('detailStudentId').textContent = profile.studentId || 'No ID';
+          document.getElementById('detailEmail').textContent = profile.email || 'No email';
+          document.getElementById('detailJoinedDate').textContent = profile.joinedDate ?
+            new Date(profile.joinedDate).toLocaleDateString() : 'Unknown';
+        } else {
+          showProfileError(data.error || 'Failed to load profile');
+        }
+      })
+      .catch(error => {
+        console.error('Error loading profile:', error);
+        showProfileError('Unable to load profile. Please check your connection.');
+      });
+
+      // Load streak from history
+      fetch('/api/student/attendance-history', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('detailStreak').textContent = data.stats.currentStreak || 0;
+        }
+      })
+      .catch(error => {
+        console.error('Error loading streak:', error);
+        document.getElementById('detailStreak').textContent = '0';
+      });
+    }
+
+    // Helper function to show profile errors
+    function showProfileError(message) {
+      document.getElementById('profileName').textContent = 'Error Loading Profile';
+      document.getElementById('profileEmail').textContent = message;
+      document.getElementById('profileStudentId').textContent = '';
+      document.getElementById('detailStudentId').textContent = 'Error';
+      document.getElementById('detailEmail').textContent = message;
+      document.getElementById('detailJoinedDate').textContent = 'Unknown';
+      document.getElementById('detailStreak').textContent = '0';
+    }
+
+    // Load courses data
+    function loadCoursesData() {
+      fetch('/api/student/courses', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const grid = document.getElementById('coursesGrid');
+          grid.innerHTML = '';
+
+          if (data.courses.length === 0) {
+            grid.innerHTML = '<div style="text-align: center; color: var(--gray-text); padding: 2rem; grid-column: 1 / -1;">No courses assigned yet. Contact your faculty for course assignments.</div>';
+            return;
+          }
+
+          data.courses.forEach(course => {
+            const card = document.createElement('div');
+            card.className = 'course-card';
+
+            card.innerHTML = `
+              <div class="course-header">
+                <div class="course-icon">
+                  <i class="fas fa-book"></i>
+                </div>
+                <div class="course-info">
+                  <h3>${course.subject}</h3>
+                  <p class="course-faculty">${course.faculty_name}</p>
+                </div>
+              </div>
+              <div class="course-meta">
+                <span>Assigned: ${new Date(course.assigned_date).toLocaleDateString()}</span>
+                <span>Faculty ID: ${course.faculty_id}</span>
+              </div>
+            `;
+            grid.appendChild(card);
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error loading courses:', error);
+        document.getElementById('coursesGrid').innerHTML =
+          '<div style="text-align: center; color: var(--gray-text); padding: 2rem;">Error loading courses</div>';
+      });
+    }
+
+    // Load history data
+    function loadHistoryData() {
+      fetch('/api/student/attendance-history', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Update stats
+          document.getElementById('historyTotalSessions').textContent = data.stats.totalSessions;
+          document.getElementById('historyPresentCount').textContent = data.stats.presentCount;
+          document.getElementById('historyLateCount').textContent = data.stats.lateCount;
+          document.getElementById('historyAttendanceRate').textContent = data.stats.attendanceRate + '%';
+
+          // Populate subject filter
+          const subjectFilter = document.getElementById('subjectFilter');
+          const subjects = [...new Set(data.history.map(h => h.subject))];
+          subjectFilter.innerHTML = '<option value="">All Subjects</option>';
+          subjects.forEach(subject => {
+            subjectFilter.innerHTML += `<option value="${subject}">${subject}</option>`;
+          });
+
+          // Display history
+          displayHistory(data.history);
+        }
+      })
+      .catch(error => {
+        console.error('Error loading history:', error);
+        document.getElementById('attendanceHistoryList').innerHTML =
+          '<div style="text-align: center; color: var(--gray-text); padding: 2rem;">Error loading attendance history</div>';
+      });
+    }
+
+    // Display history with filters
+    function displayHistory(history) {
+      const list = document.getElementById('attendanceHistoryList');
+      const subjectFilter = document.getElementById('subjectFilter').value;
+      const statusFilter = document.getElementById('statusFilter').value;
+      const dateFilter = document.getElementById('dateFilter').value;
+
+      let filteredHistory = history;
+
+      if (subjectFilter) {
+        filteredHistory = filteredHistory.filter(h => h.subject === subjectFilter);
+      }
+
+      if (statusFilter) {
+        filteredHistory = filteredHistory.filter(h => h.status === statusFilter);
+      }
+
+      if (dateFilter) {
+        filteredHistory = filteredHistory.filter(h =>
+          new Date(h.timestamp).toDateString() === new Date(dateFilter).toDateString()
+        );
+      }
+
+      list.innerHTML = '';
+
+      if (filteredHistory.length === 0) {
+        list.innerHTML = '<div style="text-align: center; color: var(--gray-text); padding: 2rem;">No attendance records match the selected filters.</div>';
+        return;
+      }
+
+      filteredHistory.forEach(record => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+
+        const statusClass = record.status === 'present' ? 'status-present' :
+                           record.status === 'late' ? 'status-late' : 'status-absent';
+
+        item.innerHTML = `
+          <div class="history-header">
+            <span class="history-subject">${record.subject}</span>
+            <span class="history-status ${statusClass}">${record.status}</span>
+          </div>
+          <div class="history-meta">
+            <div class="meta-item">
+              <i class="fas fa-user"></i>
+              <span>${record.faculty_name}</span>
+            </div>
+            <div class="meta-item">
+              <i class="fas fa-map-marker-alt"></i>
+              <span>${record.room}</span>
+            </div>
+            <div class="meta-item">
+              <i class="fas fa-calendar"></i>
+              <span>${new Date(record.timestamp).toLocaleDateString()}</span>
+            </div>
+            <div class="meta-item">
+              <i class="fas fa-clock"></i>
+              <span>${new Date(record.timestamp).toLocaleTimeString()}</span>
+            </div>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    // Filter event listeners
+    document.getElementById('subjectFilter').addEventListener('change', () => loadHistoryData());
+    document.getElementById('statusFilter').addEventListener('change', () => loadHistoryData());
+    document.getElementById('dateFilter').addEventListener('change', () => loadHistoryData());
+
+    // Socket.IO real-time updates
+    const socket = io();
+
+    // Join student dashboard room on connection
+    socket.on('connect', () => {
+      console.log('Connected to server, joining student dashboard...');
+      socket.emit('join_student_dashboard', {
+        authToken: localStorage.getItem('authToken')
+      });
+    });
+
+    // Handle room join confirmation
+    socket.on('room_joined', (data) => {
+      console.log('Successfully joined student dashboard room:', data.roomName);
+    });
+
+    // Handle QR code availability notifications
+    socket.on('qr_available', (data) => {
+      console.log('New QR code available:', data);
+
+      // Show notification to user
+      showNotification(`📱 ${data.message}`, 'info', 5000);
+
+      // Add to recent activity if on dashboard tab
+      if (document.getElementById('dashboardTab').classList.contains('active')) {
+        addRecentQRActivity(data);
+      }
+
+      // Refresh dashboard data
+      loadDashboardData();
+    });
+
+    // Handle attendance updates
+    socket.on('attendance-updated', (data) => {
+      console.log('Attendance updated:', data);
+
+      // Show success notification
+      showNotification(`✅ ${data.message}`, 'success', 3000);
+
+      // Refresh data when new attendance is marked
+      loadDashboardData();
+      if (document.getElementById('historyTab').classList.contains('active')) {
+        loadHistoryData();
+      }
+
+      // Add to recent activity if on dashboard tab
+      if (document.getElementById('dashboardTab').classList.contains('active')) {
+        addRecentAttendanceActivity(data);
+      }
+    });
+
+    // Handle connection errors
+    socket.on('error', (error) => {
+      console.error('Socket.IO error:', error);
+      showNotification('Connection error. Some real-time features may not work.', 'error');
+    });
+
+    // Add recent QR activity to dashboard
+    function addRecentQRActivity(qrData) {
+      const list = document.getElementById('recentAttendanceList');
+      if (!list) return;
+
+      // Create new activity item
+      const item = document.createElement('div');
+      item.className = 'attendance-item qr-activity';
+      item.innerHTML = `
+        <div class="item-header">
+          <span class="subject-name">${qrData.subject}</span>
+          <span class="status-badge status-pending">QR Available</span>
+        </div>
+        <div class="item-meta">
+          <span>${qrData.room}</span>
+          <span>Expires: ${new Date(qrData.expiresAt).toLocaleTimeString()}</span>
+        </div>
+      `;
+
+      // Add click handler to scan the QR
+      item.onclick = () => {
+        window.open(qrData.checkInURL, '_blank');
+      };
+
+      // Insert at the top of the list
+      list.insertBefore(item, list.firstChild);
+
+      // Remove after 2 minutes (when QR expires)
+      setTimeout(() => {
+        if (item.parentNode) {
+          item.remove();
+        }
+      }, 2 * 60 * 1000);
+    }
+
+    // Add recent attendance activity to dashboard
+    function addRecentAttendanceActivity(attendanceData) {
+      const list = document.getElementById('recentAttendanceList');
+      if (!list) return;
+
+      // Create new activity item
+      const item = document.createElement('div');
+      item.className = 'attendance-item';
+
+      const statusClass = attendanceData.status === 'present' ? 'status-present' :
+                         attendanceData.status === 'late' ? 'status-late' : 'status-absent';
+
+      item.innerHTML = `
+        <div class="item-header">
+          <span class="subject-name">${attendanceData.subject}</span>
+          <span class="status-badge ${statusClass}">${attendanceData.status}</span>
+        </div>
+        <div class="item-meta">
+          <span>Just now</span>
+          <span>Faculty</span>
+        </div>
+      `;
+
+      // Insert at the top of the list
+      list.insertBefore(item, list.firstChild);
+
+      // Remove after 5 minutes to keep list fresh
+      setTimeout(() => {
+        if (item.parentNode) {
+          item.remove();
+        }
+      }, 5 * 60 * 1000);
+    }
+
+    // Notification system
+    function showNotification(message, type = 'info', duration = 3000) {
+      // Remove existing notifications
+      const existingNotifications = document.querySelectorAll('.notification');
+      existingNotifications.forEach(notification => notification.remove());
+
+      // Create notification element
+      const notification = document.createElement('div');
+      notification.className = `notification notification-${type}`;
+      notification.innerHTML = `
+        <div class="notification-content">
+          <i class="fas ${getNotificationIcon(type)}"></i>
+          <span>${message}</span>
+        </div>
+        <button class="notification-close" onclick="this.parentElement.remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+
+      // Add to page
+      document.body.appendChild(notification);
+
+      // Auto remove after duration
+      if (duration > 0) {
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.remove();
+          }
+        }, duration);
+      }
+
+      // Add slide-in animation
+      setTimeout(() => notification.classList.add('show'), 10);
+    }
+
+    function getNotificationIcon(type) {
+      switch (type) {
+        case 'success': return 'fa-check-circle';
+        case 'error': return 'fa-exclamation-circle';
+        case 'warning': return 'fa-exclamation-triangle';
+        default: return 'fa-info-circle';
+      }
+    }
+
+    function loadMyAttendance() {
+      // Legacy function - now handled by loadDashboardData
+      loadDashboardData();
+    }
+
+    function scrollToAttendance() {
+      document.getElementById('myAttendanceList').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Photo upload functionality
+    function triggerPhotoUpload() {
+      document.getElementById('photoInput').click();
+    }
+
+    function removePhoto() {
+      if (confirm('Are you sure you want to remove your profile photo?')) {
+        // For now, we'll just update the UI since the server doesn't have a remove endpoint
+        // In a real implementation, you'd call a delete endpoint
+        updatePhotoUI(null);
+        showNotification('Profile photo removed from display', 'success');
+      }
+    }
+
+    // Handle file selection
+    document.getElementById('photoInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+          showNotification('File size too large. Please select an image under 5MB.', 'error');
+          return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+          showNotification('Please select a valid image file.', 'error');
+          return;
+        }
+
+        uploadPhoto(file);
+      }
+    });
+
+    function uploadPhoto(file) {
+      const formData = new FormData();
+      formData.append('profilePhoto', file);
+
+      const uploadBtn = document.getElementById('uploadPhotoBtn');
+      const removeBtn = document.getElementById('removePhotoBtn');
+      const progress = document.getElementById('uploadProgress');
+      const progressBar = document.getElementById('uploadProgressBar');
+
+      // Disable buttons during upload
+      uploadBtn.disabled = true;
+      removeBtn.disabled = true;
+
+      // Show progress bar
+      progress.style.display = 'block';
+      progressBar.style.width = '0%';
+
+      // Simulate progress
+      let progressValue = 0;
+      const progressInterval = setInterval(() => {
+        progressValue += 10;
+        progressBar.style.width = progressValue + '%';
+        if (progressValue >= 90) clearInterval(progressInterval);
+      }, 100);
+
+      fetch('/api/student/upload-profile-photo', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: formData
+      })
+      .then(response => {
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            showNotification('Your session has expired. Please log out and log back in.', 'error');
+            setTimeout(() => {
+              localStorage.removeItem('authToken');
+              window.location.href = '/login.html';
+            }, 2000);
+            throw new Error('Authentication expired');
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Upload response:', data);
+
+        if (data.success) {
+          // Use the photoUrl from the response if available, otherwise construct it
+          const photoUrl = data.photoUrl || `/api/student/profile-photo/${data.studentId}?t=${Date.now()}`;
+
+          // Force reload the photo after a short delay to ensure server has processed it
+          setTimeout(() => {
+            updatePhotoUI(photoUrl);
+            showNotification('Profile photo uploaded successfully', 'success');
+          }, 500);
+        } else {
+          throw new Error(data.error || 'Upload failed');
+        }
+      })
+      .catch(error => {
+        console.error('Error uploading photo:', error);
+        if (error.message !== 'Authentication expired') {
+          showNotification('Failed to upload photo. Please try again.', 'error');
+        }
+        progressBar.style.width = '0%';
+      })
+      .finally(() => {
+        // Re-enable buttons
+        uploadBtn.disabled = false;
+        removeBtn.disabled = false;
+        // Hide progress bar after a moment
+        setTimeout(() => {
+          progress.style.display = 'none';
+          progressBar.style.width = '0%';
+        }, 1000);
+      });
+    }
+
+    function updatePhotoUI(photoUrl) {
+      const avatar = document.getElementById('profileAvatar');
+      const preview = document.getElementById('photoPreview');
+      const status = document.getElementById('photoStatus');
+      const removeBtn = document.getElementById('removePhotoBtn');
+
+      if (photoUrl) {
+        // Update avatar with photo
+        avatar.innerHTML = `<img src="${photoUrl}" alt="Profile Photo">`;
+        avatar.classList.add('has-photo');
+
+        // Show preview
+        preview.src = photoUrl;
+        preview.style.display = 'block';
+
+        // Update status
+        status.className = 'photo-status photo-status-uploaded';
+        status.innerHTML = '<i class="fas fa-check-circle"></i><span>Photo uploaded</span>';
+
+        // Show remove button
+        removeBtn.style.display = 'flex';
+      } else {
+        // Reset to default
+        avatar.innerHTML = '<i class="fas fa-user-graduate"></i>';
+        avatar.classList.remove('has-photo');
+
+        // Hide preview
+        preview.style.display = 'none';
+
+        // Update status
+        status.className = 'photo-status photo-status-missing';
+        status.innerHTML = '<i class="fas fa-exclamation-triangle"></i><span>No photo uploaded</span>';
+
+        // Hide remove button
+        removeBtn.style.display = 'none';
+      }
+    }
+
+    // Load photo on profile load
+    function loadProfilePhoto() {
+      fetch('/api/student/profile-photo', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.photoUrl) {
+          updatePhotoUI(data.photoUrl);
+        } else {
+          updatePhotoUI(null);
+        }
+      })
+      .catch(error => {
+        console.error('Error loading profile photo:', error);
+        updatePhotoUI(null);
+      });
+    }
+
+    // Update loadProfileData to also load photo
+    const originalLoadProfileData = loadProfileData;
+    loadProfileData = function() {
+      originalLoadProfileData();
+      loadProfilePhoto();
+    };
 
     document.addEventListener('DOMContentLoaded', function() {
       loadMyAttendance();

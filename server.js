@@ -1203,7 +1203,8 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
       }
 
     console.log(`✅ Geolocation validated: Student is ${Math.round(distance)}m away (allowed: ${requiredRadius}m)`);
-  } else if (session.geoRequired && (!location || !location.latitude || !location.longitude)) {
+  } 
+  elseif (session.geoRequired && (!location || !location.latitude || !location.longitude)){
     console.log(`⚠️ Geolocation required but not provided - allowing check-in anyway for compatibility`);
   }
 

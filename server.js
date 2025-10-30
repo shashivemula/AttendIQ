@@ -284,7 +284,6 @@ function migrateExistingDatabase() {
       const alterQueries = [
         'ALTER TABLE sessions ADD COLUMN latitude REAL',
         'ALTER TABLE sessions ADD COLUMN longitude REAL',
-        'ALTER TABLE sessions ADD COLUMN longitude REAL',
         'ALTER TABLE sessions ADD COLUMN radius_meters INTEGER DEFAULT 100',
         'ALTER TABLE sessions ADD COLUMN geo_required BOOLEAN DEFAULT 1',
         'ALTER TABLE sessions ADD COLUMN ended_at DATETIME'
@@ -1203,9 +1202,6 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
       }
 
     console.log(`✅ Geolocation validated: Student is ${Math.round(distance)}m away (allowed: ${requiredRadius}m)`);
-  } 
-  elseif (session.geoRequired && (!location || !location.latitude || !location.longitude)){
-    console.log(`⚠️ Geolocation required but not provided - allowing check-in anyway for compatibility`);
   }
 
   // Get student details by student_id (matches JWT userId)

@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const mysql = require('mysql2/promise');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -40,7 +39,7 @@ const upload = multer({
 });
 
 // Configure multer for profile photo uploads (images only)
-const imageUpload = multer({ 
+const imageUpload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
@@ -86,13 +85,13 @@ const corsOptions = {
     // List of allowed origins
     const allowedOrigins = [
       // Local development
-      /^https?:\/\/localhost(:\d+)?$/,  // localhost with any port
-      /^https?:\/\/127\.0\.0\.1(:\d+)?$/,  // 127.0.0.1 with any port
-      /^https?:\/\/192\.168\.0\.105(:\d+)?$/,  // Your local IP with any port
+      /^https?:\/\/localhost(:\d+)?$/, // localhost with any port
+      /^https?:\/\/127\.0\.0\.1(:\d+)?$/, // 127.0.0.1 with any port
+      /^https?:\/\/192\.168\.0\.105(:\d+)?$/, // Your local IP with any port
 
       // Replit environment
       isReplit && process.env.REPLIT_DEV_DOMAIN
-        ? new RegExp(`^https?:\/\/${process.env.REPLIT_DEV_DOMAIN.replace(/\./g, '\\\\.')}$`)
+        ? new RegExp(`^https?:\/\/${process.env.REPLIT_DEV_DOMAIN.replace(/\./g, '\\.')}$`)
         : null,
 
       // Additional origins from environment
@@ -270,28 +269,25 @@ function migrateExistingDatabase() {
       return;
     }
 
-
     const columnNames = columns.map(col => col.name);
     const requiredColumns = ['latitude', 'longitude', 'radius_meters', 'geo_required', 'ended_at'];
-    const missingColumns = requiredColumns.filter(col => !columnNames.includes(col));
 
+    // Define the queries to add columns
+    const alterQueries = {
+      latitude: 'ALTER TABLE sessions ADD COLUMN latitude REAL',
+      longitude: 'ALTER TABLE sessions ADD COLUMN longitude REAL',
+      radius_meters: 'ALTER TABLE sessions ADD COLUMN radius_meters INTEGER DEFAULT 100',
+      geo_required: 'ALTER TABLE sessions ADD COLUMN geo_required BOOLEAN DEFAULT 1',
+      ended_at: 'ALTER TABLE sessions ADD COLUMN ended_at DATETIME'
+    };
+
+    const missingColumns = requiredColumns.filter(col => !columnNames.includes(col));
 
     if (missingColumns.length > 0) {
       console.log(`🚧 Adding missing columns to sessions table: ${missingColumns.join(', ')}`);
 
-
-      // Add missing columns one by one
-      const alterQueries = [
-        'ALTER TABLE sessions ADD COLUMN latitude REAL',
-        'ALTER TABLE sessions ADD COLUMN longitude REAL',
-        'ALTER TABLE sessions ADD COLUMN radius_meters INTEGER DEFAULT 100',
-        'ALTER TABLE sessions ADD COLUMN geo_required BOOLEAN DEFAULT 1',
-        'ALTER TABLE sessions ADD COLUMN ended_at DATETIME'
-      ];
-
-
-      missingColumns.forEach((col, index) => {
-        db.run(alterQueries[requiredColumns.indexOf(col)], (err) => {
+      missingColumns.forEach(col => {
+        db.run(alterQueries[col], (err) => {
           if (err && !err.message.includes('duplicate column name')) {
             console.error(`Error adding column ${col}:`, err);
           } else {
@@ -304,6 +300,7 @@ function migrateExistingDatabase() {
     }
   });
 }
+
 
 // Create required tables
 function createTables() {
@@ -496,7 +493,7 @@ app.post('/api/student/register-face', authenticateToken, (req, res) => {
     db.run(
       'UPDATE profile_photos SET face_descriptor = ?, uploaded_at = CURRENT_TIMESTAMP WHERE student_id = ?',
       [JSON.stringify(faceDescriptor), studentId],
-      function(updateErr) {
+      function (updateErr) {
         if (updateErr) {
           console.error('Database update error:', updateErr);
           return res.status(500).json({ error: 'Failed to save face descriptor' });
@@ -776,7 +773,6 @@ app.post('/api/faculty/generate-qr', authenticateToken, requireFaculty, (req, re
     room: room || 'Classroom',
     timestamp: new Date().toISOString(),
     expiresAt: expiresAt.toISOString(),
-    serverUrl: serverUrl,
     location: useGeolocation ? {
       latitude: parseFloat(location.latitude),
       longitude: parseFloat(location.longitude),
@@ -939,7 +935,7 @@ app.post('/api/faculty/generate-qr', authenticateToken, requireFaculty, (req, re
 // Regenerate QR code for existing session
 app.post('/api/faculty/regenerate-qr/:sessionId', authenticateToken, requireFaculty, (req, res) => {
   const { sessionId } = req.params;
-  const { facultyId } = req.user;
+  const facultyId = req.user.userId; // Corrected to use userId from token
 
   // Verify session exists and belongs to faculty
   db.get('SELECT * FROM sessions WHERE session_id = ? AND faculty_id = ?', [sessionId, facultyId], (err, session) => {
@@ -975,7 +971,6 @@ app.post('/api/faculty/regenerate-qr/:sessionId', authenticateToken, requireFacu
 
     // Update session data with new expiration
     sessionData.expiresAt = newExpiresAt.toISOString();
-    sessionData.serverUrl = serverUrl;
 
     // Update session in database
     db.run(
@@ -1166,7 +1161,7 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
     return res.status(400).json({ error: 'QR code has expired (2 minutes limit)' });
   }
 
-  // Validate geolocation if required (with development bypass and corrected radius/coords)
+  // Validate geolocation if required
   if (session.geoRequired) {
     const devBypassGeo = !isProduction && process.env.DEV_GEOFENCE_OPTIONAL !== '0';
 
@@ -1179,17 +1174,16 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
         });
       }
 
-      // Prefer in-memory session.location (from QR data); fall back to DB columns if present
-      const centerLat = session.location && session.location.latitude != null ? session.location.latitude : session.latitude;
-      const centerLon = session.location && session.location.longitude != null ? session.location.longitude : session.longitude;
-      const requiredRadius = (session.location && session.location.maxDistance) || session.radius_meters || session.radius || 100;
+      const centerLat = session.location ? session.location.latitude : session.latitude;
+      const centerLon = session.location ? session.location.longitude : session.longitude;
+      const requiredRadius = (session.location ? session.location.maxDistance : session.radius_meters) || 100;
 
-    const distance = calculateDistance(
-      parseFloat(centerLat),
-      parseFloat(centerLon),
-      parseFloat(location.latitude),
-      parseFloat(location.longitude)
-    );
+      const distance = calculateDistance(
+        parseFloat(centerLat),
+        parseFloat(centerLon),
+        parseFloat(location.latitude),
+        parseFloat(location.longitude)
+      );
 
       if (distance > requiredRadius) {
         return res.status(403).json({
@@ -1200,9 +1194,9 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
           sessionLocation: { latitude: centerLat, longitude: centerLon }
         });
       }
-
-    console.log(`✅ Geolocation validated: Student is ${Math.round(distance)}m away (allowed: ${requiredRadius}m)`);
-  }
+      console.log(`✅ Geolocation validated: Student is ${Math.round(distance)}m away (allowed: ${requiredRadius}m)`);
+    }
+  } // <-- THIS IS THE CORRECTED, ADDED BRACE
 
   // Get student details by student_id (matches JWT userId)
   db.get('SELECT * FROM students WHERE student_id = ?', [studentUserId], (err, student) => {
@@ -1317,7 +1311,7 @@ app.post('/api/faculty/end-session/:sessionId', authenticateToken, requireFacult
     activeQRCodes.delete(sessionId);
 
     // Update DB with ended_at
-    db.run('UPDATE sessions SET ended_at = CURRENT_TIMESTAMP WHERE session_id = ?', [sessionId], function(err) {
+    db.run('UPDATE sessions SET ended_at = CURRENT_TIMESTAMP WHERE session_id = ?', [sessionId], function (err) {
       if (err) {
         console.error('Database update error:', err);
         return res.status(500).json({ error: 'Failed to end session' });
@@ -1474,8 +1468,6 @@ app.get('/api/faculty/export-attendance/:sessionId', authenticateToken, requireF
 app.get('/api/faculty/export-all-attendance/:facultyId', authenticateToken, requireFaculty, authorizeOwnResource, (req, res) => {
   const { facultyId } = req.params;
 
-
-  // 🔒 SECURITY FIX: Only export students who actually attended this faculty's sessions
   const query = `
     SELECT
       s.student_id as "Student ID",
@@ -1518,7 +1510,6 @@ app.get('/api/faculty/export-all-attendance/:facultyId', authenticateToken, requ
         'Student ID',
         'Name',
         'Email',
-        'Email',
         'Class/Subject',
         'Status',
         'Timestamp',
@@ -1526,24 +1517,13 @@ app.get('/api/faculty/export-all-attendance/:facultyId', authenticateToken, requ
         'Session Date'
       ];
 
-
-      const opts = {
-        fields,
-        delimiter: ',',
-        header: true,
-        encoding: 'utf8'
-      };
-
-
+      const opts = { fields, delimiter: ',', header: true, encoding: 'utf8' };
       const parser = new Parser(opts);
       const csv = parser.parse(results);
 
-
-      // 🔒 SECURITY: Sanitize filename to prevent directory traversal
       const sanitizedFacultyId = facultyId.replace(/[^a-zA-Z0-9_-]/g, '_');
       const sanitizedDate = new Date().toISOString().slice(0, 10).replace(/[^0-9]/g, '');
       const filename = `all_attendance_faculty_${sanitizedFacultyId}_${sanitizedDate}.csv`;
-
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -1551,12 +1531,8 @@ app.get('/api/faculty/export-all-attendance/:facultyId', authenticateToken, requ
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
 
-
       res.send(csv);
-
-
-      console.log(`📊 Secure All Sessions CSV Export completed: ${results.length} records exported for faculty ${facultyId} by authenticated user ${req.user.userId}`);
-
+      console.log(`📊 Secure All Sessions CSV Export completed: ${results.length} records exported for faculty ${facultyId}`);
 
     } catch (parseError) {
       console.error('All Sessions CSV Parse Error:', parseError);
@@ -1564,6 +1540,7 @@ app.get('/api/faculty/export-all-attendance/:facultyId', authenticateToken, requ
     }
   });
 });
+
 
 // Student Profile API
 app.get('/api/student/profile', authenticateToken, (req, res) => {
@@ -1662,13 +1639,13 @@ app.get('/api/student/attendance-history', authenticateToken, (req, res) => {
     const totalSessions = history.length;
     const presentCount = history.filter(h => h.status === 'present').length;
     const lateCount = history.filter(h => h.status === 'late').length;
-    const attendanceRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+    const attendanceRate = totalSessions > 0 ? Math.round(((presentCount + lateCount) / totalSessions) * 100) : 0;
 
     // Calculate current streak
     let currentStreak = 0;
     const sortedHistory = history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     for (const record of sortedHistory) {
-      if (record.status === 'present') {
+      if (record.status === 'present' || record.status === 'late') {
         currentStreak++;
       } else {
         break;
@@ -1689,6 +1666,7 @@ app.get('/api/student/attendance-history', authenticateToken, (req, res) => {
   });
 });
 
+
 // Assign subjects to students (Faculty only)
 app.post('/api/faculty/assign-subjects', authenticateToken, requireFaculty, (req, res) => {
   const { studentIds, subjects } = req.body;
@@ -1707,7 +1685,7 @@ app.post('/api/faculty/assign-subjects', authenticateToken, requireFaculty, (req
       db.run(
         'INSERT OR IGNORE INTO student_subjects (student_id, subject, faculty_id) VALUES (?, ?, ?)',
         [studentId, subject, facultyId],
-        function(err) {
+        function (err) {
           if (err) {
             errors.push(`Failed to assign ${subject} to ${studentId}: ${err.message}`);
           }
@@ -1752,7 +1730,7 @@ app.post('/api/student/upload-profile-photo', authenticateToken, imageUpload.sin
       db.run(
         'UPDATE profile_photos SET photo_path = ?, uploaded_at = CURRENT_TIMESTAMP WHERE student_id = ?',
         [photoPath, studentId],
-        function(err) {
+        function (err) {
           if (err) {
             console.error('Database update error:', err);
             return res.status(500).json({ error: 'Failed to update profile photo' });
@@ -1772,7 +1750,7 @@ app.post('/api/student/upload-profile-photo', authenticateToken, imageUpload.sin
       db.run(
         'INSERT INTO profile_photos (student_id, photo_path) VALUES (?, ?)',
         [studentId, photoPath],
-        function(err) {
+        function (err) {
           if (err) {
             console.error('Database insert error:', err);
             return res.status(500).json({ error: 'Failed to save profile photo' });
@@ -2178,16 +2156,16 @@ app.get('/checkin-success/:sessionId/:studentId', (req, res) => {
 
             <p style="opacity: 0.8; margin-bottom: 1rem;">
               Your attendance has been recorded successfully. 
-              ${attendance.status === 'present' ? 'You\'re on time!' : 'You\'re marked as late.'}
-            </p>
+              ${attendance.status === 'present' ? "You're on time!":"You're marked as late."}
+            </p >
 
-            <a href="/student-dashboard.html" class="btn-home">
-              Back to Dashboard
-            </a>
-          </div>
-        </div>
-      </body>
-      </html>
+    <a href="/student-dashboard.html" class="btn-home">
+      Back to Dashboard
+    </a>
+          </div >
+        </div >
+      </body >
+      </html >
     `);
   });
 });
@@ -2238,44 +2216,44 @@ function createDefaultUsers() {
       [studentId, name, email, studentPassword],
       function (err) {
         if (err) {
-          console.log(`Student creation error for ${email}:`, err.message);
+          console.log(`Student creation error for ${ email }: `, err.message);
         } else if (this.changes > 0) {
-          console.log(`✅ Default student created: ${email} / student123`);
+          console.log(`✅ Default student created: ${ email } / student123`);
         }
       }
     );
   });
 
-  // Assign default subjects to students
-  setTimeout(() => {
-    const defaultSubjects = ['Computer Science 101', 'Mathematics 201', 'Physics 301', 'Chemistry 101', 'Biology 201'];
+// Assign default subjects to students
+setTimeout(() => {
+  const defaultSubjects = ['Computer Science 101', 'Mathematics 201', 'Physics 301', 'Chemistry 101', 'Biology 201'];
 
-    testStudents.forEach(([studentId, name, email]) => {
-      // Assign 2-3 random subjects to each student
-      const assignedSubjects = defaultSubjects.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 2);
+  testStudents.forEach(([studentId, name, email]) => {
+    // Assign 2-3 random subjects to each student
+    const assignedSubjects = defaultSubjects.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 2);
 
-      assignedSubjects.forEach(subject => {
-        db.run(
-          'INSERT OR IGNORE INTO student_subjects (student_id, subject, faculty_id) VALUES (?, ?, ?)',
-          [studentId, subject, 'faculty001'],
-          function(err) {
-            if (err) {
-              console.log(`Subject assignment error for ${studentId}:`, err.message);
-            }
+    assignedSubjects.forEach(subject => {
+      db.run(
+        'INSERT OR IGNORE INTO student_subjects (student_id, subject, faculty_id) VALUES (?, ?, ?)',
+        [studentId, subject, 'faculty001'],
+        function (err) {
+          if (err) {
+            console.log(`Subject assignment error for ${studentId}:`, err.message);
           }
-        );
-      });
+        }
+      );
     });
+  });
 
-    console.log('✅ Default subjects assigned to students');
-  }, 500);
+  console.log('✅ Default subjects assigned to students');
+}, 500);
 
-  setTimeout(() => {
-    console.log('\n🎯 LOGIN CREDENTIALS:');
-    console.log('👨‍🏫 Faculty: faculty@test.com / password123');
-    console.log('👩‍🎓 Student: alice@test.com / student123 (or bob@test.com, carol@test.com, etc.)');
-    console.log('📚 Ready to generate QR codes and track attendance!\n');
-  }, 1000);
+setTimeout(() => {
+  console.log('\n🎯 LOGIN CREDENTIALS:');
+  console.log('👨‍🏫 Faculty: faculty@test.com / password123');
+  console.log('👩‍🎓 Student: alice@test.com / student123 (or bob@test.com, carol@test.com, etc.)');
+  console.log('📚 Ready to generate QR codes and track attendance!\n');
+}, 1000);
 }
 
 // Start server

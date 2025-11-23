@@ -1267,6 +1267,17 @@
               </span>
             </div>
 
+            <div class="photo-upload-controls" style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+              <button class="photo-upload-btn" id="clearFaceBtn" onclick="clearFaceData()" style="background: rgba(251, 146, 60, 0.1); color: #f97316;">
+                <i class="fas fa-user-slash"></i>
+                <span>Clear Face Data</span>
+              </button>
+              <span class="photo-status" id="faceStatus" style="color: #888;">
+                <i class="fas fa-info-circle"></i>
+                <span id="faceStatusText">Check face registration status</span>
+              </span>
+            </div>
+
             <img id="photoPreview" class="photo-preview" style="display: none;" alt="Photo preview">
             <div class="upload-progress" id="uploadProgress">
               <div class="upload-progress-bar" id="uploadProgressBar"></div>
@@ -2042,6 +2053,70 @@
       }
     }
 
+    // Clear face registration data
+    async function clearFaceData() {
+      if (!confirm('⚠️ Are you sure you want to clear your face registration?\n\nYou will need to register your face again for attendance verification.')) {
+        return;
+      }
+
+      const clearBtn = document.getElementById('clearFaceBtn');
+      const faceStatusText = document.getElementById('faceStatusText');
+      
+      try {
+        clearBtn.disabled = true;
+        faceStatusText.textContent = 'Clearing...';
+
+        // Clear from localStorage
+        localStorage.removeItem('faceDescriptor');
+
+        // Call server to clear from database
+        const response = await fetch(`${API_BASE_URL}/api/student/clear-face`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          showNotification('✅ Face data cleared successfully! You can re-register anytime.', 'success');
+          checkFaceStatus(); // Refresh status
+        } else {
+          // Even if server fails, local storage is cleared
+          showNotification('⚠️ Face data cleared from browser. You may need to re-login.', 'warning');
+          checkFaceStatus();
+        }
+      } catch (error) {
+        console.error('Error clearing face data:', error);
+        // Still show success since localStorage is cleared
+        showNotification('Face data cleared from browser.', 'success');
+        checkFaceStatus();
+      } finally {
+        clearBtn.disabled = false;
+      }
+    }
+
+    // Check face registration status
+    async function checkFaceStatus() {
+      const faceStatus = document.getElementById('faceStatus');
+      const faceStatusText = document.getElementById('faceStatusText');
+      const clearBtn = document.getElementById('clearFaceBtn');
+
+      // Check localStorage first
+      const localFace = localStorage.getItem('faceDescriptor');
+      
+      if (localFace) {
+        faceStatus.style.color = '#10b981';
+        faceStatusText.innerHTML = '<i class="fas fa-check-circle"></i> Face registered';
+        clearBtn.style.display = 'flex';
+      } else {
+        faceStatus.style.color = '#888';
+        faceStatusText.innerHTML = '<i class="fas fa-exclamation-circle"></i> Face not registered';
+        clearBtn.style.display = 'none';
+      }
+    }
+
     // Handle file selection
     document.getElementById('photoInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -2203,16 +2278,18 @@
       });
     }
 
-    // Update loadProfileData to also load photo
+    // Update loadProfileData to also load photo and face status
     const originalLoadProfileData = loadProfileData;
     loadProfileData = function() {
       originalLoadProfileData();
       loadProfilePhoto();
+      checkFaceStatus();
     };
 
     document.addEventListener('DOMContentLoaded', function() {
       loadMyAttendance();
       checkBrowserCompatibility();
+      checkFaceStatus(); // Check face status on page load
     });
   </script>
 </body>

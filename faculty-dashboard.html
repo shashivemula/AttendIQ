@@ -88,9 +88,11 @@
                 </div>
             </div>
             
-            <!-- QR Code Generation Section -->
-            <div class="qr-generation-section">
-                <div class="qr-card glass-card">
+            <!-- Main Content Grid -->
+            <div class="main-content-grid">
+                <!-- Left Side: QR Code Generation -->
+                <div class="qr-generation-section">
+                    <div class="qr-card glass-card">
                     <div class="qr-header">
                         <div class="qr-status-indicator" id="qrStatusIndicator">
                             <div class="status-light inactive" id="statusLight"></div>
@@ -213,9 +215,9 @@
                 </div>
             </div>
 
-            <!-- Live Attendance Feed Section -->
-            <div class="live-attendance-section">
-                <div class="attendance-card glass-card">
+                <!-- Right Side: Live Attendance Feed -->
+                <div class="live-attendance-section">
+                    <div class="attendance-card glass-card">
                     <div class="attendance-header">
                         <div class="header-left">
                             <div class="card-icon">
@@ -271,6 +273,7 @@
                     </div>
                 </div>
             </div>
+            <!-- End Main Content Grid -->
             
             <!-- Student Roster Management Section -->
             <div class="roster-management-section">
@@ -536,6 +539,14 @@
             font-weight: 500;
         }
 
+        /* Main Content Grid */
+        .main-content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
         /* Glass Cards */
         .glass-card {
             background: rgba(15, 23, 42, 0.6);
@@ -546,8 +557,9 @@
             box-shadow: 
                 0 20px 40px rgba(0, 0, 0, 0.4),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            margin-bottom: 2rem;
+            margin-bottom: 0;
             position: relative;
+            height: fit-content;
         }
 
         .glass-card::before {
@@ -1371,7 +1383,38 @@
             }
         }
 
+        /* QR Generation Section Specific */
+        .qr-generation-section {
+            min-height: 600px;
+        }
+
+        /* Live Attendance Section Specific */
+        .live-attendance-section {
+            min-height: 600px;
+        }
+
+        .live-attendance-section .glass-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .feed-container {
+            flex: 1;
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
         /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-content-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+        }
+
         @media (max-width: 768px) {
             .faculty-header {
                 flex-direction: column;
@@ -1403,6 +1446,10 @@
 
             .session-actions {
                 justify-content: center;
+            }
+
+            .main-content-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -1944,17 +1991,13 @@
             try {
                 setLoading('regenerateQRBtn', true);
 
-                // Get faculty ID from JWT token
-                const facultyId = JSON.parse(atob(jwtToken.split('.')[1])).userId;
-
                 // Call backend API to regenerate QR
                 const response = await fetch(`${API_BASE}/api/faculty/regenerate-qr/${currentSession.id}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${jwtToken}`
-                    },
-                    body: JSON.stringify({ facultyId })
+                    }
                 });
 
                 if (!response.ok) {

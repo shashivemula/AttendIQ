@@ -318,7 +318,14 @@
         
         setTimeout(() => { 
           stopCamera();
-          window.location.href = 'student-dashboard.html'; 
+          // Check if we need to return to a session
+          const returnUrl = sessionStorage.getItem('returnToSession');
+          if (returnUrl) {
+            sessionStorage.removeItem('returnToSession');
+            window.location.href = returnUrl;
+          } else {
+            window.location.href = 'student-dashboard.html';
+          }
         }, 1500);
         
       } catch (e) {
@@ -387,7 +394,16 @@
         localStorage.setItem('faceDescriptor', JSON.stringify(desc));
         statusEl.textContent = '✓ Face registered from photo! Redirecting...';
         statusEl.style.color = '#4CAF50';
-        setTimeout(() => { window.location.href = 'student-dashboard.html'; }, 1500);
+        setTimeout(() => { 
+          // Check if we need to return to a session
+          const returnUrl = sessionStorage.getItem('returnToSession');
+          if (returnUrl) {
+            sessionStorage.removeItem('returnToSession');
+            window.location.href = returnUrl;
+          } else {
+            window.location.href = 'student-dashboard.html';
+          }
+        }, 1500);
 
       } catch (e) {
         console.error(e);
@@ -430,19 +446,80 @@
 
     window.addEventListener('beforeunload', stopCamera);
 
-    // Initialize
-    log('Page loaded');
-    log('Browser: ' + navigator.userAgent.split(' ').pop());
-    log('Protocol: ' + window.location.protocol);
-    log('API Base: ' + (typeof window.API_BASE_URL !== 'undefined' ? window.API_BASE_URL : 'NOT SET'));
-    
-    statusEl.textContent = 'Loading... (30-60s on mobile)';
-    
-    if (document.readyState === 'loading') {
-      window.addEventListener('DOMContentLoaded', loadModels);
-    } else {
-      setTimeout(loadModels, 500);
+    // Check authentication and token validity
+    async function checkAuthAndToken() {
+      const token = localStorage.getItem('authToken');
+      const userType = localStorage.getItem('userType');
+      
+      if (!token || userType !== 'student') {
+        log('ERROR: Not authenticated as student');
+        statusEl.textContent = 'Not logged in. Redirecting...';
+        statusEl.style.color = '#f44336';
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 2000);
+        return false;
+      }
+
+      // Validate token with server
+      try {
+        const response = await fetch(window.API_BASE_URL + '/api/student/face-descriptor', {
+          method: 'GET',
+          headers: {
+            'Authorization': 'Bearer ' + token
+          }
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          const data = await response.json();
+          if (data.error && (data.error.includes('token') || data.error.includes('expired') || data.error.includes('Invalid'))) {
+            log('ERROR: Token expired');
+            statusEl.textContent = 'Session expired. Please login again.';
+            statusEl.style.color = '#f44336';
+            
+            // Clear expired token
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            localStorage.removeItem('userType');
+            
+            setTimeout(() => {
+              window.location.href = 'login.html';
+            }, 2000);
+            return false;
+          }
+        }
+      } catch (err) {
+        log('Token validation failed, continuing...');
+      }
+      
+      log('✓ Authenticated as student');
+      return true;
     }
+
+    // Initialize
+    async function initializePage() {
+      log('Page loaded');
+      log('Browser: ' + navigator.userAgent.split(' ').pop());
+      log('Protocol: ' + window.location.protocol);
+      log('API Base: ' + (typeof window.API_BASE_URL !== 'undefined' ? window.API_BASE_URL : 'NOT SET'));
+      
+      // Check auth first
+      const isAuthenticated = await checkAuthAndToken();
+      if (!isAuthenticated) {
+        return; // Stop initialization if not authenticated
+      }
+      
+      statusEl.textContent = 'Loading... (30-60s on mobile)';
+      
+      if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', loadModels);
+      } else {
+        setTimeout(loadModels, 500);
+      }
+    }
+
+    // Start initialization
+    initializePage();
   </script>
 </body>
 </html>

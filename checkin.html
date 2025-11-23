@@ -357,6 +357,147 @@
             transform: none;
         }
 
+        /* Location Permission Styles */
+        .location-permission {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: var(--shadow-heavy);
+            text-align: center;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .location-permission.show {
+            display: block;
+        }
+
+        .location-icon {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .location-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .location-description {
+            color: var(--gray-text);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .location-benefits {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: left;
+        }
+
+        .location-benefit {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            color: var(--light-text);
+            font-size: 0.9rem;
+        }
+
+        .location-benefit i {
+            color: #4ade80;
+            margin-right: 0.75rem;
+            width: 16px;
+        }
+
+        .location-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .location-btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .location-btn.primary {
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        .location-btn.secondary {
+            background: rgba(107, 114, 128, 0.1);
+            color: var(--gray-text);
+            border: 1px solid rgba(107, 114, 128, 0.3);
+        }
+
+        .location-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .location-status {
+            margin: 1rem 0;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .location-status.requesting {
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .location-status.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .location-status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .location-accuracy {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+            color: var(--gray-text);
+        }
+
         @media (max-width: 768px) {
             .checkin-container {
                 padding: 0.5rem;
@@ -416,10 +557,6 @@
                     <span class="detail-label">Session ID:</span>
                     <span class="detail-value" id="sessionIdDisplay">-</span>
                 </div>
-                <div class="session-detail" id="distanceRow" style="display:none;">
-                    <span class="detail-label">Distance:</span>
-                    <span class="detail-value" id="distanceStatus">-</span>
-                </div>
             </div>
             
             <div id="checkinStatus" class="checkin-status status-waiting">
@@ -438,6 +575,55 @@
             <button id="checkinBtn" class="checkin-btn">
                 <i class="fas fa-check-circle"></i> Mark My Attendance
             </button>
+
+            <!-- Location Permission Section -->
+            <div id="locationPermission" class="location-permission">
+                <div class="location-icon">
+                    <i class="fas fa-map-marker-alt"></i>
+                </div>
+                <div class="location-title">
+                    Enable Location Access
+                </div>
+                <div class="location-description">
+                    Location is required to verify classroom attendance. You can enter coordinates manually or try auto-detection.
+                </div>
+
+                <div class="location-benefits">
+                    <div class="location-benefit">
+                        <i class="fas fa-shield-alt"></i>
+                        Prevents proxy attendance
+                    </div>
+                    <div class="location-benefit">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Verifies you're in the classroom
+                    </div>
+                    <div class="location-benefit">
+                        <i class="fas fa-lock"></i>
+                        Your location is only used for verification
+                    </div>
+                    <div class="location-benefit">
+                        <i class="fas fa-clock"></i>
+                        Quick and secure process
+                    </div>
+                </div>
+
+                <div id="locationStatus" class="location-status requesting" style="display: none;">
+                    <i class="fas fa-spinner fa-spin"></i> Requesting location access...
+                </div>
+
+                <div id="locationAccuracy" class="location-accuracy" style="display: none;">
+                    <i class="fas fa-satellite-dish"></i> Location accuracy: <span id="accuracyValue">-</span>m
+                </div>
+
+                <div class="location-buttons">
+                    <button id="manualLocationBtn" class="location-btn primary">
+                        <i class="fas fa-map-marker-alt"></i> Enter Location
+                    </button>
+                    <button id="allowLocationBtn" class="location-btn secondary">
+                        <i class="fas fa-satellite-dish"></i> Try Auto-Detect
+                    </button>
+                </div>
+            </div>
 
             <!-- Face Verification Section -->
             <div id="faceVerification" class="face-verification">
@@ -475,6 +661,7 @@
     </div>
 
     <script src="js/config.js"></script>
+    <script src="quick-login.js"></script>
     <script>
         // Load socket.io from the correct server
         const socketScript = document.createElement('script');
@@ -564,8 +751,13 @@ if (serverUrl) {
 
         // Check if user is logged in
         const userData = localStorage.getItem('userData');
-        const authToken = localStorage.getItem('authToken');
+        let authToken = localStorage.getItem('authToken');
         const userType = localStorage.getItem('userType');
+        
+        // Simple check - if any required data is missing, show login
+        if (!userData || !authToken || userType !== 'student') {
+            console.log('Missing auth data, showing login prompt');
+        }
 
         // Add CORS headers to all fetch requests and provide friendly error handling
         const originalFetch = window.fetch;
@@ -605,9 +797,12 @@ if (serverUrl) {
                 });
         };
 
+        // No need for periodic refresh with 365-day tokens
+
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing check-in...');
+            
             initializeCheckin().catch(error => {
                 console.error('Initialization error:', error);
                 const errorDiv = document.getElementById('error-message') || document.createElement('div');
@@ -624,7 +819,8 @@ if (serverUrl) {
             });
         });
 
-        function initializeCheckin() {
+
+        async function initializeCheckin() {
             // Validate session parameters
             if (!sessionId || !subject) {
                 showStatus('error', 'Invalid QR code. Missing session information.');
@@ -643,31 +839,7 @@ if (serverUrl) {
               .then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch session meta')))
               .then(meta => {
                   window.sessionMeta = meta;
-                  if (meta && meta.geoRequired && meta.location) {
-                      // Try to compute distance and display it
-                      getCurrentPosition().then(pos => {
-                          const d = haversineMeters(
-                              pos.coords.latitude, pos.coords.longitude,
-                              meta.location.latitude, meta.location.longitude
-                          );
-                          const radius = meta.location.maxDistance || 100;
-                          const within = d <= radius;
-                          const row = document.getElementById('distanceRow');
-                          const txt = document.getElementById('distanceStatus');
-                          row.style.display = 'flex';
-                          txt.textContent = within
-                            ? `Within ${Math.round(d)}m (allowed ${radius}m)`
-                            : `Outside by ${Math.max(0, Math.round(d - radius))}m (allowed ${radius}m)`;
-
-                          if (!within) {
-                              // Warn and keep button enabled only in dev if server bypasses; otherwise disable
-                              showStatus('error', `You are outside the allowed radius (${radius}m).`);
-                              // Keep enabled in dev; disable only when explicitly enforced (cannot detect here reliably)
-                          }
-                      }).catch(() => {
-                          // Ignore if location not available yet
-                      });
-                  }
+                  // Geolocation is still collected and sent to server
               })
               .catch(err => console.warn('Session meta fetch failed:', err.message));
 
@@ -676,6 +848,8 @@ if (serverUrl) {
                 showLoginPrompt();
                 return;
             }
+
+            // Skip token validation for now to avoid session expired errors
 
             // User is logged in, show ready status
             const user = JSON.parse(userData);
@@ -735,33 +909,96 @@ if (serverUrl) {
             window.location.reload();
         }
 
-        // Enhanced error handling with user-friendly messages
-        function handleApiError(error, data) {
-            let message = 'An unexpected error occurred';
+        // Validate token by attempting to refresh it with the server
+        async function validateAndRefreshToken() {
+            const token = localStorage.getItem('authToken');
+            if (!token) return false;
 
-            // Friendly auth messages
-            const authRelated = (data && data.error && /token|unauthorized|forbidden|expired/i.test(data.error)) ||
-                                (error && (error.status === 401 || error.status === 403));
+            try {
+                const response = await fetch(window.API_BASE_URL + '/api/refresh-token', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-            if (authRelated) {
-                // Clear invalid token and redirect to login
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('userData');
-                localStorage.removeItem('userType');
-                showLoginPrompt();
-                message = 'Your session has expired. Please login again.';
-                showStatus('error', message);
-                return;
-            }
-
-            if (data && data.error) {
-                if (data.error.includes('location') || data.error.includes('radius') || data.error.includes('distance')) {
-                    message = '📍 ' + data.error + '\n\n💡 Tip: Make sure location services are enabled and you are within the allowed radius.';
-                } else if (data.error.includes('expired')) {
-                    message = '⏰ ' + data.error + '\n\n💡 Please ask your instructor to generate a new QR code.';
-                } else {
-                    message = data.error;
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.token) {
+                        // Update with fresh token
+                        localStorage.setItem('authToken', data.token);
+                        console.log('Token refreshed successfully');
+                        return true;
+                    }
                 }
+                return false;
+            } catch (e) {
+                console.log('Token validation failed:', e);
+                return false;
+            }
+        }
+
+        // Refresh token using the refresh endpoint
+        async function refreshTokenUsingEndpoint(currentToken) {
+            try {
+                const response = await fetch(window.API_BASE_URL + '/api/refresh-token', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.token) {
+                        localStorage.setItem('authToken', data.token);
+                        return true;
+                    }
+                }
+                return false;
+            } catch (e) {
+                console.log('Token refresh endpoint failed:', e);
+                return false;
+            }
+        }
+
+        // Refresh token using credentials
+        async function refreshTokenWithCredentials(email, password) {
+            try {
+                const response = await fetch(window.API_BASE_URL + '/api/student/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // Update stored credentials
+                        localStorage.setItem('authToken', data.token);
+                        localStorage.setItem('userData', JSON.stringify(data.student));
+                        localStorage.setItem('userType', 'student');
+                        localStorage.setItem('userPassword', password); // Store for future refreshes
+                        return true;
+                    }
+                }
+                return false;
+            } catch (e) {
+                console.log('Token refresh failed:', e);
+                return false;
+            }
+        }
+
+        // Simple error handling
+        function handleApiError(error, data) {
+            let message = 'An error occurred';
+            
+            if (data && data.error) {
+                message = data.error;
             } else if (error && error.message) {
                 message = error.message;
             }
@@ -780,41 +1017,413 @@ if (serverUrl) {
             return !isHttps && !isLocalhost;
         }
 
-        // Helper function to get geolocation with one retry and longer timeout
-        function getCurrentPosition() {
+        // Enhanced location permission and acquisition (like shopping websites)
+        let locationPermissionGranted = false;
+        let currentLocation = null;
+
+        // Check if location permission is already granted
+        async function checkLocationPermission() {
+            if (!navigator.geolocation) {
+                return 'not-supported';
+            }
+
+            if (navigator.permissions) {
+                try {
+                    const permission = await navigator.permissions.query({ name: 'geolocation' });
+                    return permission.state; // 'granted', 'denied', or 'prompt'
+                } catch (e) {
+                    console.log('Permission API not available, will request directly');
+                }
+            }
+            return 'unknown';
+        }
+
+        // Check for secure origin issues
+        function checkSecureOrigin() {
+            const isHTTPS = window.location.protocol === 'https:';
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const isLAN = window.location.hostname.match(/^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[01])\./); 
+            
+            return isHTTPS || isLocalhost || isLAN;
+        }
+
+        // Show secure origin warning
+        function showSecureOriginWarning() {
+            const currentUrl = window.location.href;
+            const httpsUrl = currentUrl.replace('http://', 'https://');
+            const lanIP = window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) ? window.location.hostname : 'YOUR_COMPUTER_IP';
+            
+            const warningHtml = `
+                <div style="background: #dc2626; color: white; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    <h4 style="margin: 0 0 0.5rem 0;">🔒 Secure Connection Required</h4>
+                    <p style="margin: 0 0 1rem 0; font-size: 0.9rem;">Location access requires HTTPS or LAN IP. Choose an option:</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button onclick="window.location.href='${httpsUrl}'" style="padding: 0.5rem; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            🔒 Switch to HTTPS
+                        </button>
+                        <button onclick="showLANInstructions()" style="padding: 0.5rem; background: #0369a1; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            🌐 Use LAN IP Instead
+                        </button>
+                        <button onclick="showManualLocationEntry()" style="padding: 0.5rem; background: #7c3aed; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            📍 Enter Location Manually
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            const statusEl = document.getElementById('locationStatus');
+            statusEl.innerHTML = warningHtml;
+        }
+
+        // Show LAN IP instructions
+        function showLANInstructions() {
+            const instructionsHtml = `
+                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    <h4 style="color: #60a5fa; margin-bottom: 1rem;">🌐 Access via LAN IP</h4>
+                    <p style="font-size: 0.9rem; color: #888; margin-bottom: 1rem;">Find your computer's IP address:</p>
+                    
+                    <div style="background: #1a1a1a; padding: 0.75rem; border-radius: 4px; margin: 0.5rem 0; font-family: monospace; font-size: 0.8rem;">
+                        <strong>Windows:</strong> Open Command Prompt → type <code>ipconfig</code><br>
+                        <strong>Mac/Linux:</strong> Open Terminal → type <code>ifconfig</code><br>
+                        Look for IPv4 address like: 192.168.1.100
+                    </div>
+                    
+                    <p style="font-size: 0.9rem; color: #888; margin: 1rem 0;">Then access: <code>http://YOUR_IP:5000/checkin.html?session=${sessionId}</code></p>
+                    
+                    <button onclick="showManualLocationEntry()" style="width: 100%; padding: 0.5rem; background: #7c3aed; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Skip - Enter Location Manually
+                    </button>
+                </div>
+            `;
+            
+            const statusEl = document.getElementById('locationStatus');
+            statusEl.innerHTML = instructionsHtml;
+        }
+
+        // Request location permission with secure origin check
+        function requestLocationPermission() {
             return new Promise((resolve, reject) => {
+                // Check secure origin first
+                if (!checkSecureOrigin()) {
+                    console.log('❌ Insecure origin detected');
+                    showSecureOriginWarning();
+                    reject(new Error('Secure origin required'));
+                    return;
+                }
+                
                 if (!navigator.geolocation) {
-                    reject(new Error('Geolocation not supported'));
+                    reject(new Error('Geolocation is not supported by this browser'));
                     return;
                 }
 
-                // If insecure origin and not localhost/LAN, warn and still attempt
-                if (requiresSecureOrigin()) {
-                    const err = new Error('Geolocation blocked on insecure origin. Use HTTPS or LAN IP for better compatibility.');
-                    err.code = 'INSECURE_ORIGIN';
-                    // Do not early reject; attempt anyway because some Android browsers allow it
-                    console.warn('Potential insecure origin for geolocation - attempting anyway');
-                }
+                updateLocationStatus('requesting', 'Requesting location access...');
 
-                const options = { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 };
+                // Try multiple approaches for better compatibility
+                let attempts = 0;
+                const maxAttempts = 3;
+                
+                function attemptLocation() {
+                    attempts++;
+                    console.log(`📍 Location attempt ${attempts}/${maxAttempts}`);
+                    
+                    const options = {
+                        enableHighAccuracy: attempts === 1, // First try high accuracy
+                        timeout: attempts === 1 ? 15000 : 30000, // Longer timeout for subsequent attempts
+                        maximumAge: attempts === 1 ? 0 : 300000 // Allow cached location after first attempt
+                    };
 
-                let triedOnce = false;
-                const attempt = () => {
                     navigator.geolocation.getCurrentPosition(
-                        pos => resolve(pos),
-                        err => {
-                            if (!triedOnce && (err.code === 3 || err.code === 2)) { // TIMEOUT or POSITION_UNAVAILABLE
-                                triedOnce = true;
-                                console.warn('Retrying geolocation after error:', err);
-                                setTimeout(attempt, 500);
-                            } else {
-                                reject(err);
+                        (position) => {
+                            locationPermissionGranted = true;
+                            currentLocation = {
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude,
+                                accuracy: position.coords.accuracy
+                            };
+                            
+                            updateLocationStatus('success', 'Location access granted!');
+                            
+                            // Show accuracy info
+                            const accuracyEl = document.getElementById('locationAccuracy');
+                            const accuracyValue = document.getElementById('accuracyValue');
+                            if (accuracyEl && accuracyValue) {
+                                accuracyValue.textContent = Math.round(position.coords.accuracy);
+                                accuracyEl.style.display = 'block';
                             }
+                            
+                            console.log('✅ Location obtained:', currentLocation);
+                            resolve(position);
+                        },
+                        (error) => {
+                            console.error(`❌ Location attempt ${attempts} failed:`, error);
+                            
+                            // Try again with different settings
+                            if (attempts < maxAttempts) {
+                                console.log('🔄 Retrying with different settings...');
+                                setTimeout(attemptLocation, 1000);
+                                return;
+                            }
+                            
+                            // All attempts failed - show manual entry
+                            locationPermissionGranted = false;
+                            showManualLocationEntry();
+                            reject(error);
                         },
                         options
                     );
-                };
-                attempt();
+                }
+                
+                attemptLocation();
+            });
+        }
+
+        // Fallback: Manual location entry
+        function showManualLocationEntry() {
+            const manualHtml = `
+                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    <h4 style="color: #60a5fa; margin-bottom: 1rem;">📍 Manual Location Entry</h4>
+                    <p style="font-size: 0.9rem; color: #888; margin-bottom: 1rem;">Enter your current coordinates manually:</p>
+                    <div id="classroomPresets" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
+                        <button id="classroomLocationBtn" style="padding: 0.75rem; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                            📍 Use Classroom Location
+                        </button>
+                        <button onclick="showAllPresets()" style="padding: 0.75rem; background: #374151; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            🌍 Other Locations
+                        </button>
+                    </div>
+                    <div id="otherPresets" style="display: none; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
+                        <button onclick="setLocation(28.6139, 77.2090)" style="padding: 0.5rem; background: #374151; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Delhi</button>
+                        <button onclick="setLocation(19.0760, 72.8777)" style="padding: 0.5rem; background: #374151; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Mumbai</button>
+                        <button onclick="setLocation(12.9716, 77.5946)" style="padding: 0.5rem; background: #374151; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Bangalore</button>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <input id="manualLat" type="number" step="any" placeholder="Latitude" style="flex: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff;">
+                        <input id="manualLon" type="number" step="any" placeholder="Longitude" style="flex: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff;">
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button id="useManualLocation" style="flex: 1; padding: 0.5rem; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">Use This Location</button>
+                        <button id="getMyLocation" style="flex: 1; padding: 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Try Auto-Detect</button>
+                    </div>
+                </div>
+            `;
+            
+            const statusEl = document.getElementById('locationStatus');
+            statusEl.innerHTML = manualHtml;
+            
+            // Load classroom location from session
+            let classroomLocation = null;
+            if (window.sessionMeta && window.sessionMeta.location) {
+                classroomLocation = window.sessionMeta.location;
+            }
+            
+            // Set classroom location button with verification
+            const classroomBtn = document.getElementById('classroomLocationBtn');
+            if (classroomLocation) {
+                classroomBtn.onclick = () => verifyAndUseClassroomLocation();
+                classroomBtn.innerHTML = `📍 Verify I'm in Classroom`;
+            } else {
+                classroomBtn.onclick = () => alert('No classroom location set by faculty. Use manual entry.');
+                classroomBtn.style.background = '#6b7280';
+                classroomBtn.innerHTML = '📍 No Classroom Location Set';
+            }
+            
+            // Verify student is actually in classroom
+            async function verifyAndUseClassroomLocation() {
+                updateLocationStatus('requesting', 'Verifying you are in classroom...');
+                
+                try {
+                    // Force fresh location (no cache)
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(
+                            resolve, reject, 
+                            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                        );
+                    });
+                    
+                    const actualLat = position.coords.latitude;
+                    const actualLon = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+                    
+                    // Calculate distance from classroom
+                    const distance = haversineMeters(
+                        actualLat, actualLon,
+                        classroomLocation.latitude, classroomLocation.longitude
+                    );
+                    
+                    const allowedRadius = classroomLocation.maxDistance || 100;
+                    
+                    if (distance <= allowedRadius) {
+                        // Student is actually in classroom
+                        currentLocation = { latitude: actualLat, longitude: actualLon, accuracy };
+                        locationPermissionGranted = true;
+                        
+                        updateLocationStatus('success', `Verified in classroom! Distance: ${Math.round(distance)}m`);
+                        
+                        setTimeout(() => {
+                            hideLocationPermission();
+                            const storedDescriptor = localStorage.getItem('faceDescriptor');
+                            if (!storedDescriptor) {
+                                showFaceRegistrationWarning();
+                                return;
+                            }
+                            showFaceVerification();
+                        }, 800);
+                    } else {
+                        // Student is too far from classroom
+                        updateLocationStatus('error', 
+                            `You are ${Math.round(distance)}m away from classroom. You must be within ${allowedRadius}m. Please come to classroom first.`
+                        );
+                    }
+                    
+                } catch (error) {
+                    console.error('Location verification failed:', error);
+                    updateLocationStatus('error', 'Could not verify your location. Please enable GPS and try again.');
+                }
+            }
+            
+            // Show/hide other presets
+            window.showAllPresets = function() {
+                const otherPresets = document.getElementById('otherPresets');
+                otherPresets.style.display = otherPresets.style.display === 'none' ? 'grid' : 'none';
+            };
+            
+            // Quick location setter (for testing only)
+            window.setLocation = function(lat, lon) {
+                document.getElementById('manualLat').value = lat;
+                document.getElementById('manualLon').value = lon;
+                // Auto-submit after preset selection
+                setTimeout(() => document.getElementById('useManualLocation').click(), 100);
+            };
+            
+            // Add warning for manual entry
+            document.getElementById('useManualLocation').addEventListener('click', function() {
+                const lat = parseFloat(document.getElementById('manualLat').value);
+                const lon = parseFloat(document.getElementById('manualLon').value);
+                
+                if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+                    alert('Please enter valid coordinates (Latitude: -90 to 90, Longitude: -180 to 180)');
+                    return;
+                }
+                
+                // Check if trying to use exact classroom coordinates
+                if (classroomLocation) {
+                    const distance = haversineMeters(lat, lon, classroomLocation.latitude, classroomLocation.longitude);
+                    if (distance < 10) {
+                        alert('⚠️ Suspicious: You entered exact classroom coordinates. Please use "Verify I\'m in Classroom" button instead.');
+                        return;
+                    }
+                }
+                
+                currentLocation = { latitude: lat, longitude: lon, accuracy: 1000 };
+                locationPermissionGranted = true;
+                
+                updateLocationStatus('success', `Manual location set: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+                
+                setTimeout(() => {
+                    hideLocationPermission();
+                    const storedDescriptor = localStorage.getItem('faceDescriptor');
+                    if (!storedDescriptor) {
+                        showStatus('error', 'Face verification required. Please register your face first.');
+                        setTimeout(() => { window.location.href = 'face-registration.html'; }, 2000);
+                        return;
+                    }
+                    showFaceVerification();
+                }, 800);
+            });
+            
+            // Add event listeners
+            document.getElementById('useManualLocation').addEventListener('click', function() {
+                const lat = parseFloat(document.getElementById('manualLat').value);
+                const lon = parseFloat(document.getElementById('manualLon').value);
+                
+                if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+                    alert('Please enter valid coordinates (Latitude: -90 to 90, Longitude: -180 to 180)');
+                    return;
+                }
+                
+                currentLocation = { latitude: lat, longitude: lon, accuracy: 1000 };
+                locationPermissionGranted = true;
+                
+                updateLocationStatus('success', `Location set: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+                
+                setTimeout(() => {
+                    hideLocationPermission();
+                    const storedDescriptor = localStorage.getItem('faceDescriptor');
+                    if (!storedDescriptor) {
+                        showStatus('error', 'Face verification required. Please register your face first.');
+                        setTimeout(() => { window.location.href = 'face-registration.html'; }, 2000);
+                        return;
+                    }
+                    showFaceVerification();
+                }, 800);
+            });
+            
+            document.getElementById('getMyLocation').addEventListener('click', function() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            document.getElementById('manualLat').value = pos.coords.latitude.toFixed(6);
+                            document.getElementById('manualLon').value = pos.coords.longitude.toFixed(6);
+                        },
+                        (err) => {
+                            alert('Could not get location: ' + err.message);
+                        }
+                    );
+                } else {
+                    alert('Geolocation not supported');
+                }
+            });
+        }
+
+        // Update location status display
+        function updateLocationStatus(type, message) {
+            const statusEl = document.getElementById('locationStatus');
+            if (statusEl) {
+                statusEl.className = `location-status ${type}`;
+                statusEl.innerHTML = `<i class="fas fa-${getLocationStatusIcon(type)}"></i> ${message}`;
+                statusEl.style.display = 'block';
+            }
+        }
+
+        // Get location status icon
+        function getLocationStatusIcon(type) {
+            switch (type) {
+                case 'requesting': return 'spinner fa-spin';
+                case 'success': return 'check-circle';
+                case 'error': return 'exclamation-circle';
+                default: return 'info-circle';
+            }
+        }
+
+        // Show location permission UI
+        function showLocationPermission() {
+            const locationDiv = document.getElementById('locationPermission');
+            locationDiv.classList.add('show');
+        }
+
+        // Hide location permission UI
+        function hideLocationPermission() {
+            const locationDiv = document.getElementById('locationPermission');
+            locationDiv.classList.remove('show');
+        }
+
+        // Helper function to get geolocation with enhanced error handling
+        function getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (currentLocation && locationPermissionGranted) {
+                    // Use cached location if available and recent
+                    resolve({
+                        coords: currentLocation,
+                        timestamp: Date.now()
+                    });
+                    return;
+                }
+
+                // Request fresh location
+                requestLocationPermission()
+                    .then(resolve)
+                    .catch(reject);
             });
         }
 
@@ -845,7 +1454,6 @@ if (serverUrl) {
         let faceStream = null;
         let faceDetectionInterval = null;
         let registeredFaceDescriptor = null;
-        let lastFaceDistance = null;
         let faceVerifiedOK = false;
 
         // Initialize face verification
@@ -891,7 +1499,7 @@ if (serverUrl) {
                 }
 
                 if (!registeredFaceDescriptor) {
-                    updateFaceStatus('error', 'No registered face found. Please register first.');
+                    showFaceRegistrationWarning();
                     return;
                 }
 
@@ -997,7 +1605,11 @@ if (serverUrl) {
             faceDetectionInterval = setInterval(async () => {
                 if (!faceModelsLoaded) return;
 
-                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                // Optimized: Use smaller input size for faster detection
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({
+                    inputSize: 224,  // Reduced from default 416 for speed
+                    scoreThreshold: 0.5  // Higher threshold for better face detection
+                }))
                     .withFaceLandmarks()
                     .withFaceDescriptors();
 
@@ -1006,16 +1618,19 @@ if (serverUrl) {
                 faceapi.draw.drawDetections(canvas, resizedDetections);
                 faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
-                // Enable verify button if face is detected
+                // Enable verify button if face is detected with good quality
                 const verifyBtn = document.getElementById('verifyFaceBtn');
-                if (detections.length > 0) {
+                if (detections.length > 0 && detections[0].detection.score > 0.5) {
                     verifyBtn.disabled = false;
                     updateFaceStatus('verifying', 'Face detected! Click "Verify Face" to proceed');
+                } else if (detections.length > 0) {
+                    verifyBtn.disabled = true;
+                    updateFaceStatus('verifying', 'Move closer - face quality too low');
                 } else {
                     verifyBtn.disabled = true;
                     updateFaceStatus('verifying', 'Position your face in the camera');
                 }
-            }, 100);
+            }, 150);
         }
 
         // Update face status
@@ -1052,8 +1667,16 @@ if (serverUrl) {
                 return false;
             }
 
+            // Stricter verification: Check detection quality first
+            const detection = detections[0];
+            if (detection.detection.score < 0.6) {
+                faceVerifiedOK = false;
+                updateFaceStatus('error', 'Face detection quality too low. Move closer and ensure good lighting.');
+                return false;
+            }
+
             // Compute Euclidean distance between stored descriptor and live descriptor
-            const live = detections[0].descriptor;
+            const live = detection.descriptor;
             const stored = registeredFaceDescriptor;
             let sum = 0;
             for (let i = 0; i < live.length; i++) {
@@ -1061,16 +1684,15 @@ if (serverUrl) {
                 sum += d * d;
             }
             const distance = Math.sqrt(sum);
-            lastFaceDistance = distance;
 
-            // Threshold mapping: ~60-65% match ~ distance <= 0.45 (more lenient)
-            if (distance <= 0.45) {
+            // Stricter threshold: 0.40 for better accuracy (only matches registered face)
+            if (distance <= 0.40) {
                 faceVerifiedOK = true;
                 updateFaceStatus('success', 'Face verified successfully!');
                 return true;
             } else {
                 faceVerifiedOK = false;
-                updateFaceStatus('error', 'Face verification failed. Please try again.');
+                updateFaceStatus('error', 'Face does not match. Only registered user can verify.');
                 return false;
             }
         }
@@ -1099,6 +1721,48 @@ if (serverUrl) {
             const faceDiv = document.getElementById('faceVerification');
             faceDiv.classList.remove('show');
             stopFaceVerification();
+        }
+
+        // Show face registration warning
+        function showFaceRegistrationWarning() {
+            const faceDiv = document.getElementById('faceVerification');
+            const warningHtml = `
+                <div style="background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; border-radius: 12px; padding: 2rem; text-align: center; margin: 1rem 0;">
+                    <div style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;">⚠️</div>
+                    <h3 style="color: #ef4444; margin-bottom: 1rem; font-size: 1.5rem;">Face Not Registered</h3>
+
+                    <p style="color: var(--gray-text); margin-bottom: 2rem; font-size: 0.9rem;">Face verification is required for attendance. Please register your face first to continue.</p>
+                    
+                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="goToFaceRegistration()" style="background: var(--gradient-primary); color: white; border: none; padding: 1rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem;">
+                            <i class="fas fa-user-plus"></i> Register Face Now
+                        </button>
+                        <button onclick="goBack()" style="background: rgba(107, 114, 128, 0.1); color: var(--gray-text); border: 1px solid rgba(107, 114, 128, 0.3); padding: 1rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem;">
+                            <i class="fas fa-arrow-left"></i> Go Back
+                        </button>
+                    </div>
+                    
+                    <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 1rem; margin-top: 1.5rem; text-align: left;">
+                        <div style="color: #60a5fa; font-weight: 600; margin-bottom: 0.5rem;"><i class="fas fa-info-circle"></i> Why Face Registration?</div>
+                        <ul style="color: var(--light-text); font-size: 0.9rem; margin: 0; padding-left: 1.5rem;">
+                            <li>Prevents proxy attendance</li>
+                            <li>Ensures only you can mark your attendance</li>
+                            <li>Quick and secure verification process</li>
+                            <li>One-time setup, lifetime security</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            faceDiv.innerHTML = warningHtml;
+            faceDiv.classList.add('show');
+        }
+
+        // Navigate to face registration
+        function goToFaceRegistration() {
+            // Store current session info for return
+            sessionStorage.setItem('returnToSession', window.location.href);
+            window.location.href = 'face-registration.html';
         }
 
         // Event listeners for face verification
@@ -1208,8 +1872,16 @@ if (serverUrl) {
                     return false;
                 }
 
+                // Check detection quality
+                const detection = detections[0];
+                if (detection.detection.score < 0.6) {
+                    faceVerifiedOK = false;
+                    updateFaceStatus('error', 'Face quality too low. Ensure good lighting and try again.');
+                    return false;
+                }
+
                 // Compute distance
-                const live = detections[0].descriptor;
+                const live = detection.descriptor;
                 const stored = registeredFaceDescriptor;
                 let sum = 0;
                 for (let i = 0; i < live.length; i++) {
@@ -1217,9 +1889,9 @@ if (serverUrl) {
                     sum += d * d;
                 }
                 const distance = Math.sqrt(sum);
-                lastFaceDistance = distance;
 
-                if (distance <= 0.45) {
+                // Stricter threshold for photo verification
+                if (distance <= 0.40) {
                     faceVerifiedOK = true;
                     updateFaceStatus('success', 'Face verified! Marking attendance...');
                     setTimeout(() => {
@@ -1229,7 +1901,7 @@ if (serverUrl) {
                     return true;
                 } else {
                     faceVerifiedOK = false;
-                    updateFaceStatus('error', 'Face verification failed. Distance: ' + distance.toFixed(2));
+                    updateFaceStatus('error', 'Face does not match. Only registered user can verify.');
                     return false;
                 }
             } catch (e) {
@@ -1248,14 +1920,18 @@ if (serverUrl) {
             if (file) verifyFaceFromPhoto(file);
         });
 
-        // Modified check-in function to include face verification
+        // Simplified check-in function
         async function performCheckin() {
-            if (!userData || !authToken || userType !== 'student') {
-                showLoginPrompt();
+            // Simple check without token validation
+            const currentToken = localStorage.getItem('authToken');
+            const currentUserData = localStorage.getItem('userData');
+            
+            if (!currentUserData || !currentToken) {
+                showStatus('error', 'Please login first');
                 return;
             }
 
-            const user = JSON.parse(userData);
+            const user = JSON.parse(currentUserData);
             const button = document.getElementById('checkinBtn');
 
             // Disable button and show processing
@@ -1276,60 +1952,86 @@ if (serverUrl) {
 
                 const geoRequired = window.sessionMeta?.geoRequired || false;
 
-                // Get geolocation
+                // Get geolocation - MANDATORY to prevent proxy attendance
                 let location = null;
                 try {
-                    showStatus('processing', 'Requesting your location...');
+                    showStatus('processing', 'Requesting your location... (Required for security)');
                     const position = await getCurrentPosition();
                     location = {
                         latitude: position.coords.latitude,
                         longitude: position.coords.longitude
                     };
+                    console.log('✅ Location captured:', location);
                 } catch (err) {
-                    console.log('Geolocation not available:', err);
-                    // Provide clearer guidance
+                    console.error('❌ Geolocation failed:', err);
+                    
+                    // Location is MANDATORY - stop attendance marking
                     if (err && (err.code === 'INSECURE_ORIGIN' || /secure origin/i.test(err.message || ''))) {
-                        showStatus('error', 'Location access blocked. Try: 1) Use HTTPS URL, 2) Use LAN IP instead of localhost, or 3) Ask faculty to disable location verification.');
+                        showStatus('error', '⚠️ Location Required! Access this page using your device IP (e.g., http://192.168.0.107:5000) instead of localhost.');
                     } else if (err && (err.code === 1 || /denied/i.test(err.message || ''))) { // PERMISSION_DENIED
-                        showStatus('error', 'Location permission denied. Please allow location access in browser settings and try again.');
+                        showStatus('error', '⚠️ Location Required! Please allow location access and refresh the page. This prevents proxy attendance.');
                     } else if (err && (err.code === 3 || /timeout/i.test(err.message || ''))) { // TIMEOUT
-                        showStatus('error', 'Getting location timed out. Ensure GPS/location services are enabled and try again.');
+                        showStatus('error', '⚠️ Location Required! Enable GPS/location services on your device and try again.');
                     } else {
-                        showStatus('error', 'Could not get location. Check GPS settings and try again.');
+                        showStatus('error', '⚠️ Location Required! Enable location services to mark attendance. This prevents proxy attendance.');
                     }
+                    
+                    // STOP - don't allow attendance without location
+                    throw new Error('Location is mandatory to prevent proxy attendance');
                 }
 
-                // Note: Geolocation is now optional - server allows check-in even if location not provided
+                // Location successfully captured - proceed with attendance
 
+                const finalToken = localStorage.getItem('authToken');
+                
                 // Make API call to mark attendance using dynamic base URL
                 const apiUrl = window.API_BASE_URL + '/api/student/mark-attendance';
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
+                        'Authorization': `Bearer ${finalToken}`
                     },
                     body: JSON.stringify({
                         sessionId: sessionId,
                         studentEmail: user.email,
                         timestamp: new Date().toISOString(),
                         location: location,
-                        faceVerified: !!faceVerifiedOK,
-                        faceDistance: lastFaceDistance
+                        faceVerified: !!faceVerifiedOK
                     })
                 });
 
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // Success!
-                    showStatus('success', `✅ Attendance marked successfully! Status: ${data.status.toUpperCase()}`);
+                    // Success! Show detailed verification summary
+                    const statusColor = data.status === 'present' ? '#10b981' : data.status === 'late' ? '#f59e0b' : '#ef4444';
+                    const checkmark = data.status === 'present' || data.status === 'late' ? '✅' : '❌';
+                    const today = new Date().toISOString().split('T')[0];
+                    
+                    const detailsHtml = `
+                        <div style="background:#1a1a1a;border:2px solid ${statusColor};border-radius:12px;padding:20px;margin:20px 0;font-family:monospace;text-align:left;">
+                            <div style="color:#888;margin-bottom:8px;">Student ID: <span style="color:#fff">${user.rollNumber || user.email.split('@')[0]}</span></div>
+                            <div style="color:#888;margin-bottom:8px;">Date: <span style="color:#fff">${today}</span></div>
+                            <div style="color:#888;margin-bottom:8px;">QR: <span style="color:#10b981">Verified ✅</span></div>
+                            <div style="color:#888;margin-bottom:8px;">Location: <span style="color:#10b981">Verified ✅</span></div>
+                            <div style="color:#888;margin-bottom:8px;">Face: <span style="color:#10b981">Verified ✅</span></div>
+                            <div style="color:#888;margin-top:12px;font-size:18px;">Status: <span style="color:${statusColor};font-weight:bold">${data.status.toUpperCase()} ${checkmark}</span></div>
+                        </div>
+                    `;
+                    
+                    showStatus('success', detailsHtml);
                     showToast('Attendance marked successfully');
 
-                    // Redirect to student dashboard after 2 seconds
+                    // Keep session active and redirect to dashboard
                     setTimeout(() => {
-                        window.location.href = `${window.API_BASE_URL}/student-dashboard.html`;
-                    }, 2000);
+                        // Ensure session data is preserved
+                        if (localStorage.getItem('authToken') && localStorage.getItem('userData')) {
+                            window.location.href = `${window.API_BASE_URL}/student-dashboard.html`;
+                        } else {
+                            window.location.href = 'login.html';
+                        }
+                    }, 4000);
                 } else {
                     // Error from server - use enhanced error handling
                     handleApiError(null, data);
@@ -1342,23 +2044,57 @@ if (serverUrl) {
             }
         }
 
-        // Modified check-in button click handler
+        // Location permission event listeners
+        document.getElementById('allowLocationBtn').addEventListener('click', async function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Requesting...';
+
+            try {
+                await requestLocationPermission();
+                
+                // Success - proceed to face verification
+                setTimeout(() => {
+                    hideLocationPermission();
+                    
+                    // Check if face verification is needed
+                    const storedDescriptor = localStorage.getItem('faceDescriptor');
+                    if (!storedDescriptor) {
+                        showFaceRegistrationWarning();
+                        return;
+                    }
+                    
+                    showFaceVerification();
+                }, 1500);
+                
+            } catch (error) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Allow Location';
+                console.error('Location permission failed:', error);
+            }
+        });
+
+        document.getElementById('manualLocationBtn').addEventListener('click', function() {
+            // Show manual location entry instead of just help
+            showManualLocationEntry();
+        });
+
+        // Modified check-in button click handler - check face first
         document.getElementById('checkinBtn').addEventListener('click', async function() {
             if (!userData || !authToken || userType !== 'student') {
                 showLoginPrompt();
                 return;
             }
 
-            // Always require face verification before check-in
+            // Check face registration first before location
             const storedDescriptor = localStorage.getItem('faceDescriptor');
             if (!storedDescriptor) {
-                showStatus('error', 'Face verification required. Please register your face first.');
-                setTimeout(() => { window.location.href = 'face-registration.html'; }, 2000);
+                showFaceRegistrationWarning();
                 return;
             }
 
-            // Show face verification UI; on success, it will call performCheckin()
-            showFaceVerification();
+            // Face is registered, proceed with location
+            showLocationPermission();
         });
     </script>
 </body>

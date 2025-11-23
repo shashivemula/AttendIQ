@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Face Registration Warning</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #1e293b 50%, var(--dark-bg) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        
+        .test-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: var(--shadow-heavy);
+            text-align: center;
+        }
+        
+        .test-btn {
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 1rem;
+            font-size: 1rem;
+        }
+        
+        .test-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .face-verification {
+            display: none;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: var(--shadow-heavy);
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .face-verification.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h2>Test Face Registration Warning</h2>
+        <p>This page tests the face registration warning functionality.</p>
+        
+        <button class="test-btn" onclick="testWithFaceData()">
+            <i class="fas fa-check"></i> Test with Face Data (Normal Flow)
+        </button>
+        
+        <button class="test-btn" onclick="testWithoutFaceData()">
+            <i class="fas fa-exclamation-triangle"></i> Test without Face Data (Warning)
+        </button>
+        
+        <button class="test-btn" onclick="clearFaceData()">
+            <i class="fas fa-trash"></i> Clear Face Data
+        </button>
+        
+        <div id="faceVerification" class="face-verification">
+            <!-- Face verification content will be inserted here -->
+        </div>
+    </div>
+
+    <script>
+        // Mock face registration warning function
+        function showFaceRegistrationWarning() {
+            const faceDiv = document.getElementById('faceVerification');
+            const warningHtml = `
+                <div style="background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; border-radius: 12px; padding: 2rem; text-align: center; margin: 1rem 0;">
+                    <div style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;">⚠️</div>
+                    <h3 style="color: #ef4444; margin-bottom: 1rem; font-size: 1.5rem;">Face Not Registered</h3>
+                    <p style="color: var(--light-text); margin-bottom: 1.5rem; line-height: 1.6;">आपका चेहरा रजिस्टर नहीं है। कृपया पहले अपना चेहरा रजिस्टर करें।</p>
+                    <p style="color: var(--gray-text); margin-bottom: 2rem; font-size: 0.9rem;">Face verification is required for attendance. Please register your face first to continue.</p>
+                    
+                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="goToFaceRegistration()" style="background: var(--gradient-primary); color: white; border: none; padding: 1rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem;">
+                            <i class="fas fa-user-plus"></i> Register Face Now
+                        </button>
+                        <button onclick="goBack()" style="background: rgba(107, 114, 128, 0.1); color: var(--gray-text); border: 1px solid rgba(107, 114, 128, 0.3); padding: 1rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem;">
+                            <i class="fas fa-arrow-left"></i> Go Back
+                        </button>
+                    </div>
+                    
+                    <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 1rem; margin-top: 1.5rem; text-align: left;">
+                        <div style="color: #60a5fa; font-weight: 600; margin-bottom: 0.5rem;"><i class="fas fa-info-circle"></i> Why Face Registration?</div>
+                        <ul style="color: var(--light-text); font-size: 0.9rem; margin: 0; padding-left: 1.5rem;">
+                            <li>Prevents proxy attendance</li>
+                            <li>Ensures only you can mark your attendance</li>
+                            <li>Quick and secure verification process</li>
+                            <li>One-time setup, lifetime security</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            faceDiv.innerHTML = warningHtml;
+            faceDiv.classList.add('show');
+        }
+
+        function showNormalFlow() {
+            const faceDiv = document.getElementById('faceVerification');
+            const normalHtml = `
+                <div style="background: rgba(34, 197, 94, 0.1); border: 2px solid #22c55e; border-radius: 12px; padding: 2rem; text-align: center; margin: 1rem 0;">
+                    <div style="font-size: 3rem; color: #22c55e; margin-bottom: 1rem;">✅</div>
+                    <h3 style="color: #22c55e; margin-bottom: 1rem; font-size: 1.5rem;">Face Data Found</h3>
+                    <p style="color: var(--light-text); margin-bottom: 1.5rem; line-height: 1.6;">Your face is registered. Proceeding with verification...</p>
+                    
+                    <button onclick="hideFaceVerification()" style="background: var(--gradient-primary); color: white; border: none; padding: 1rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem;">
+                        <i class="fas fa-check"></i> Continue
+                    </button>
+                </div>
+            `;
+            
+            faceDiv.innerHTML = normalHtml;
+            faceDiv.classList.add('show');
+        }
+
+        function hideFaceVerification() {
+            const faceDiv = document.getElementById('faceVerification');
+            faceDiv.classList.remove('show');
+        }
+
+        function goToFaceRegistration() {
+            alert('Redirecting to face registration page...\n(In real app: window.location.href = "face-registration.html")');
+        }
+
+        function goBack() {
+            alert('Going back to previous page...\n(In real app: window.history.back() or redirect to dashboard)');
+        }
+
+        function testWithFaceData() {
+            // Simulate having face data
+            localStorage.setItem('faceDescriptor', JSON.stringify([1, 2, 3, 4, 5]));
+            
+            const storedDescriptor = localStorage.getItem('faceDescriptor');
+            if (!storedDescriptor) {
+                showFaceRegistrationWarning();
+            } else {
+                showNormalFlow();
+            }
+        }
+
+        function testWithoutFaceData() {
+            // Simulate not having face data
+            localStorage.removeItem('faceDescriptor');
+            
+            const storedDescriptor = localStorage.getItem('faceDescriptor');
+            if (!storedDescriptor) {
+                showFaceRegistrationWarning();
+            } else {
+                showNormalFlow();
+            }
+        }
+
+        function clearFaceData() {
+            localStorage.removeItem('faceDescriptor');
+            hideFaceVerification();
+            alert('Face data cleared from localStorage');
+        }
+    </script>
+</body>
+</html>

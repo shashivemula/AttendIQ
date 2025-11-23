@@ -1,31 +1,5 @@
-modules = ["web", "nodejs-20"]
-
-[nix]
-channel = "stable-25_05"
-
-[workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start Server"
-
-[[workflows.workflow]]
-name = "Start Server"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm start"
-waitForPort = 5000
-
-[[ports]]
-localPort = 5000
-externalPort = 80
+run = "npm start"
+modules = ["nodejs-18"]
 
 [deployment]
-deploymentTarget = "autoscale"
-run = ["node", "server.js"]
+run = ["sh", "-c", "npm start"]

@@ -87,11 +87,19 @@ const corsOptions = {
       // Local development
       /^https?:\/\/localhost(:\d+)?$/, // localhost with any port
       /^https?:\/\/127\.0\.0\.1(:\d+)?$/, // 127.0.0.1 with any port
-      /^https?:\/\/192\.168\.0\.105(:\d+)?$/, // Your local IP with any port
+      
+      // 1. Add the dynamically detected IP (Critical for mobile)
+      localIP ? new RegExp(`^https?:\\/\\/${localIP.replace(/\./g, '\\.')}(:\\d+)?$`) : null,
+
+      // 2. Allow ANY 192.168.x.x address (Broad fix for home WiFi)
+      /^https?:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+      
+      // 3. Allow 10.x.x.x address (Common in University/Corporate WiFi)
+      /^https?:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
 
       // Replit environment
       isReplit && process.env.REPLIT_DEV_DOMAIN
-        ? new RegExp(`^https?:\/\/${process.env.REPLIT_DEV_DOMAIN.replace(/\./g, '\\.')}$`)
+        ? new RegExp(`^https?:\\/\\/${process.env.REPLIT_DEV_DOMAIN.replace(/\./g, '\\.')}$`)
         : null,
 
       // Additional origins from environment
@@ -108,7 +116,6 @@ const corsOptions = {
       return callback(null, true);
     }
 
-
     console.warn(`❌ Blocked CORS request from: ${origin}`);
     callback(new Error('Not allowed by CORS'));
   },
@@ -116,8 +123,8 @@ const corsOptions = {
   methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
-  maxAge: 600, // Cache preflight request for 10 minutes
-  optionsSuccessStatus: 204 // Return 204 No Content for preflight requests
+  maxAge: 600, 
+  optionsSuccessStatus: 204
 };
 
 // Enable CORS for all routes

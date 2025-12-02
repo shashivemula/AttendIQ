@@ -661,6 +661,7 @@
     </div>
 
     <script src="js/config.js"></script>
+    <script src="js/token-manager.js"></script>
     <script src="quick-login.js"></script>
     <script>
         // Load socket.io from the correct server
@@ -1984,20 +1985,20 @@ if (serverUrl) {
 
                 const finalToken = localStorage.getItem('authToken');
                 
-                // Make API call to mark attendance using dynamic base URL
+                // Make API call to mark attendance using token manager
                 const apiUrl = window.API_BASE_URL + '/api/student/mark-attendance';
-                const response = await fetch(apiUrl, {
+                const response = await window.tokenManager.fetchWithAuth(apiUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${finalToken}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         sessionId: sessionId,
                         studentEmail: user.email,
                         timestamp: new Date().toISOString(),
                         location: location,
-                        faceVerified: !!faceVerifiedOK
+                        faceVerified: !!faceVerifiedOK,
+                        faceDistance: faceVerifiedOK ? 0.3 : 1.0 // Mock distance for now
                     })
                 });
 

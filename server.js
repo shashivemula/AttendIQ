@@ -14,6 +14,9 @@ const multer = require('multer');
 const sqlite3 = require('sqlite3').verbose();
 const XLSX = require('xlsx');
 const { Parser } = require('@json2csv/plainjs');
+const axios = require('axios');
+const twilio = require('twilio');
+const AILeaveAnalyzer = require('./ai-leave-analyzer');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -53,6 +56,9 @@ const imageUpload = multer({
 
 const app = express();
 const server = http.createServer(app);
+
+// Initialize AI analyzer
+const aiAnalyzer = new AILeaveAnalyzer();
 // Configure environment
 const isProduction = process.env.NODE_ENV === 'production';
 const isReplit = !!process.env.REPLIT_DB_URL;
@@ -387,6 +393,27 @@ function createTables() {
     )
   `;
 
+  // Leave requests table
+  const leaveRequestsTable = `
+    CREATE TABLE IF NOT EXISTS leave_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id TEXT NOT NULL,
+      faculty_id TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      leave_date DATE NOT NULL,
+      reason_category TEXT NOT NULL,
+      reason_text TEXT NOT NULL,
+      status TEXT CHECK(status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+      ai_score INTEGER DEFAULT NULL,
+      ai_recommendation TEXT DEFAULT NULL,
+      faculty_comments TEXT DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (student_id) REFERENCES students (student_id),
+      FOREIGN KEY (faculty_id) REFERENCES faculty (faculty_id)
+    )
+  `;
+
   // Create unique constraint for attendance
   const attendanceIndex = `
     CREATE UNIQUE INDEX IF NOT EXISTS unique_attendance
@@ -416,6 +443,10 @@ function createTables() {
 
   db.run(profilePhotosTable, (err) => {
     if (err) console.error('Error creating profile_photos table:', err);
+  });
+
+  db.run(leaveRequestsTable, (err) => {
+    if (err) console.error('Error creating leave_requests table:', err);
   });
 
   db.run(attendanceIndex, (err) => {
@@ -637,7 +668,7 @@ app.post('/api/student/login', (req, res) => {
       const token = jwt.sign({
         userId: student.student_id,
         type: 'student'
-      }, JWT_SECRET, { expiresIn: '365d' });
+      }, JWT_SECRET, { expiresIn: '30d' }); // 30 days instead of 365
 
       res.json({
         success: true,
@@ -692,7 +723,7 @@ app.post('/api/faculty/login', (req, res) => {
       const token = jwt.sign({
         userId: faculty.faculty_id,
         type: 'faculty'
-      }, JWT_SECRET, { expiresIn: '24h' });
+      }, JWT_SECRET, { expiresIn: '365d' });
 
       res.json({
         success: true,
@@ -1315,6 +1346,11 @@ app.post('/api/student/mark-attendance', authenticateToken, (req, res) => {
           console.log(`📡 Real-time update sent: ${student.name} marked ${status}`);
 
           console.log(`✅ Attendance marked: ${student.name} (${student.email}) - ${status} in ${session.subject}`);
+          
+          // Also check for other students who might have missed this session
+          setTimeout(() => {
+            checkConsecutiveAbsences(1);
+          }, 5000);
         }
       );
     });
@@ -1360,6 +1396,13 @@ app.post('/api/faculty/end-session/:sessionId', authenticateToken, requireFacult
       });
 
       console.log(`✅ Session ended: ${session.subject} - ${sessionId.slice(0, 8)}... by faculty ${facultyId}`);
+      
+      // Check for absent students immediately after session ends
+      console.log('🔍 Checking absent students for ended session...');
+      setTimeout(() => {
+        checkAbsentStudents(sessionId);
+      }, 2000); // Wait 2 seconds for any last-minute attendance
+      
       res.json({ success: true, message: 'Session ended successfully' });
     });
   });
@@ -1446,7 +1489,17 @@ app.get('/api/faculty/export-attendance/:sessionId', authenticateToken, requireF
       }
 
       if (results.length === 0) {
-        return res.status(404).json({ error: 'No attendance data found for this session' });
+        // If no data found, create a sample CSV with headers
+        const sampleCSV = 'Student ID,Name,Email,Class/Subject,Status,Timestamp,Room,Session Date\n' +
+                         'No data,No attendance records found for this session,,,,,,';
+        
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="no_data_found.csv"');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        return res.send(sampleCSV);
       }
 
       try {
@@ -1536,7 +1589,17 @@ app.get('/api/faculty/export-all-attendance/:facultyId', authenticateToken, requ
     }
 
     if (results.length === 0) {
-      return res.status(404).json({ error: 'No attendance data found for this faculty' });
+      // If no data found, create a sample CSV with headers
+      const sampleCSV = 'Student ID,Name,Email,Class/Subject,Status,Timestamp,Room,Session Date\n' +
+                       'No data,No attendance records found for this faculty,,,,,,';
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="no_faculty_data_found.csv"');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
+      return res.send(sampleCSV);
     }
 
     try {
@@ -1573,6 +1636,36 @@ app.get('/api/faculty/export-all-attendance/:facultyId', authenticateToken, requ
       return res.status(500).json({ error: 'Failed to generate CSV file' });
     }
   });
+});
+
+// Token refresh endpoint - allows refreshing expired tokens
+app.post('/api/refresh-token', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  try {
+    // Verify token but ignore expiration to allow refresh of expired tokens
+    const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true });
+
+    // Generate new token with full expiration
+    const newToken = jwt.sign({
+      userId: decoded.userId,
+      type: decoded.type
+    }, JWT_SECRET, { expiresIn: '365d' });
+
+    res.json({
+      success: true,
+      token: newToken,
+      message: 'Token refreshed successfully'
+    });
+  } catch (e) {
+    console.error('Token refresh verification error:', e);
+    return res.status(403).json({ error: 'Invalid token' });
+  }
 });
 
 // Student Profile API
@@ -2209,6 +2302,82 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+// Twilio WhatsApp Notification System
+const twilioClient = twilio(
+  process.env.TWILIO_SID || 'AC_YOUR_TWILIO_SID',
+  process.env.TWILIO_TOKEN || 'YOUR_TWILIO_TOKEN'
+);
+
+async function sendWhatsAppNotification(phoneNumber, message) {
+  try {
+    const result = await twilioClient.messages.create({
+      body: message,
+      from: 'whatsapp:+14155238886', // Twilio sandbox number
+      to: `whatsapp:+91${phoneNumber}`
+    });
+    
+    console.log(`📱 WhatsApp sent to ${phoneNumber}: ${message}`);
+    console.log(`✅ Message SID: ${result.sid}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Twilio WhatsApp failed:', error.message);
+    
+    // Fallback to WhatsApp web link
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/91${phoneNumber}?text=${encodedMessage}`;
+    console.log(`🔗 Fallback WhatsApp Link: ${whatsappUrl}`);
+    return false;
+  }
+}
+
+// Enhanced absence check for specific session
+function checkAbsentStudents(sessionId) {
+  console.log(`🔍 Checking absent students for session: ${sessionId}`);
+  
+  // Get session details
+  db.get('SELECT * FROM sessions WHERE session_id = ?', [sessionId], (err, session) => {
+    if (err || !session) {
+      console.error('Session not found:', sessionId);
+      return;
+    }
+    
+    console.log(`📚 Session found: ${session.subject} by faculty ${session.faculty_id}`);
+    
+    // Find all students enrolled in this subject who didn't attend
+    db.all(`
+      SELECT s.name, s.phone, s.student_id, s.email
+      FROM students s
+      JOIN student_subjects ss ON s.student_id = ss.student_id
+      LEFT JOIN attendance a ON s.student_id = a.student_id AND a.session_id = ?
+      WHERE ss.subject = ? AND ss.faculty_id = ?
+      AND a.student_id IS NULL
+    `, [sessionId, session.subject, session.faculty_id], async (err, absentStudents) => {
+      if (err) {
+        console.error('Error finding absent students:', err);
+        return;
+      }
+      
+      console.log(`📊 Found ${absentStudents.length} absent students:`);
+      absentStudents.forEach(s => console.log(`- ${s.name} (${s.email}) - Phone: ${s.phone || 'No phone'}`));
+      
+      // Send notifications to all absent students
+      for (const student of absentStudents) {
+        if (student.phone) {
+          const message = `⚠️ Hi ${student.name}, you missed the ${session.subject} session. Please attend the next class!`;
+          try {
+            const result = await sendWhatsAppNotification(student.phone, message);
+            console.log(`📨 WhatsApp sent to ${student.name} (${student.phone}): ${result ? 'Success' : 'Failed'}`);
+          } catch (error) {
+            console.error(`❌ WhatsApp failed for ${student.name}:`, error.message);
+          }
+        } else {
+          console.log(`⚠️ No phone number for ${student.name}`);
+        }
+      }
+    });
+  });
+}
+
 // Create default test users on startup
 function createDefaultUsers() {
   console.log('\n🔧 Creating default test users...');
@@ -2289,6 +2458,251 @@ setTimeout(() => {
 }, 1000);
 }
 
+
+
+// Test WhatsApp notification endpoint
+app.post('/api/test-whatsapp', (req, res) => {
+  const { phone, message } = req.body;
+  
+  if (!phone || !message) {
+    return res.status(400).json({ error: 'Phone and message required' });
+  }
+  
+  sendWhatsAppNotification(phone, message);
+  res.json({ success: true, message: 'WhatsApp notification sent' });
+});
+
+// Manual absence check (no auth required for testing)
+app.get('/api/manual-check-absences', (req, res) => {
+  console.log('🔍 Manual absence check triggered...');
+  // Get latest session and check absences
+  db.get('SELECT session_id FROM sessions ORDER BY created_at DESC LIMIT 1', [], (err, session) => {
+    if (session) {
+      checkAbsentStudents(session.session_id);
+    }
+  });
+  res.json({ success: true, message: 'Absence check triggered manually' });
+});
+
+// Force test notification to Krishnaraj
+app.get('/api/test-krishnaraj', async (req, res) => {
+  console.log('📨 Sending test notification to Krishnaraj...');
+  const message = '⚠️ Hi Krishnaraj, this is a test notification from AttendIQ! You missed Computer Science class.';
+  const result = await sendWhatsAppNotification('9699588803', message);
+  res.json({ 
+    success: true, 
+    message: 'Test notification sent to Krishnaraj',
+    twilioResult: result
+  });
+});
+
+// Test WhatsApp for any student
+app.post('/api/test-whatsapp-student', async (req, res) => {
+  const { studentId } = req.body;
+  
+  if (!studentId) {
+    return res.status(400).json({ error: 'Student ID required' });
+  }
+  
+  // Get student details
+  db.get('SELECT name, phone FROM students WHERE student_id = ?', [studentId], async (err, student) => {
+    if (err || !student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    if (!student.phone) {
+      return res.status(400).json({ error: 'No phone number for student' });
+    }
+    
+    const message = `⚠️ Hi ${student.name}, this is a test WhatsApp notification from AttendIQ!`;
+    const result = await sendWhatsAppNotification(student.phone, message);
+    
+    res.json({
+      success: true,
+      message: `Test notification sent to ${student.name}`,
+      phone: student.phone,
+      twilioResult: result
+    });
+  });
+});
+
+// Leave Management APIs
+
+// Submit leave request (Student) with AI Analysis
+app.post('/api/student/leave-request', authenticateToken, async (req, res) => {
+  if (req.user.type !== 'student') {
+    return res.status(403).json({ error: 'Student access required' });
+  }
+
+  const { facultyId, subject, leaveDate, reasonCategory, reasonText } = req.body;
+  const studentId = req.user.userId;
+
+  if (!facultyId || !subject || !leaveDate || !reasonCategory || !reasonText) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  try {
+    // Get student's leave history for AI analysis
+    const studentHistory = await new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM leave_requests WHERE student_id = ? ORDER BY created_at DESC',
+        [studentId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Prepare request data for AI analysis
+    const requestData = {
+      studentId,
+      facultyId,
+      subject,
+      leaveDate,
+      reasonCategory,
+      reasonText
+    };
+
+    // Run AI analysis
+    const aiAnalysis = await aiAnalyzer.analyzeLeaveRequest(requestData, studentHistory);
+    
+    console.log(`🤖 AI Analysis for ${studentId}: Score ${aiAnalysis.credibilityScore}, Risk ${aiAnalysis.riskLevel}`);
+
+    // Insert leave request with AI analysis
+    db.run(
+      'INSERT INTO leave_requests (student_id, faculty_id, subject, leave_date, reason_category, reason_text, ai_score, ai_recommendation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [studentId, facultyId, subject, leaveDate, reasonCategory, reasonText, aiAnalysis.credibilityScore, JSON.stringify(aiAnalysis)],
+      function(err) {
+        if (err) {
+          console.error('Leave request error:', err);
+          return res.status(500).json({ error: 'Failed to submit leave request' });
+        }
+
+        res.json({
+          success: true,
+          message: 'Leave request submitted successfully',
+          requestId: this.lastID,
+          aiAnalysis: {
+            credibilityScore: aiAnalysis.credibilityScore,
+            riskLevel: aiAnalysis.riskLevel,
+            flags: aiAnalysis.flags.filter(f => f.type === 'info')
+          }
+        });
+      }
+    );
+  } catch (error) {
+    console.error('AI analysis error:', error);
+    // Fallback: submit without AI analysis
+    db.run(
+      'INSERT INTO leave_requests (student_id, faculty_id, subject, leave_date, reason_category, reason_text) VALUES (?, ?, ?, ?, ?, ?)',
+      [studentId, facultyId, subject, leaveDate, reasonCategory, reasonText],
+      function(err) {
+        if (err) {
+          console.error('Leave request error:', err);
+          return res.status(500).json({ error: 'Failed to submit leave request' });
+        }
+
+        res.json({
+          success: true,
+          message: 'Leave request submitted successfully (AI analysis unavailable)',
+          requestId: this.lastID
+        });
+      }
+    );
+  }
+});
+
+// Get leave requests for faculty
+app.get('/api/faculty/leave-requests', authenticateToken, requireFaculty, (req, res) => {
+  const facultyId = req.user.userId;
+
+  const query = `
+    SELECT 
+      lr.*,
+      s.name as student_name,
+      s.email as student_email
+    FROM leave_requests lr
+    JOIN students s ON lr.student_id = s.student_id
+    WHERE lr.faculty_id = ?
+    ORDER BY lr.created_at DESC
+  `;
+
+  db.all(query, [facultyId], (err, requests) => {
+    if (err) {
+      console.error('Get leave requests error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    res.json({
+      success: true,
+      requests: requests || []
+    });
+  });
+});
+
+// Update leave request status (Faculty)
+app.put('/api/faculty/leave-request/:id', authenticateToken, requireFaculty, (req, res) => {
+  const { id } = req.params;
+  const { status, comments } = req.body;
+  const facultyId = req.user.userId;
+
+  if (!['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+
+  db.run(
+    'UPDATE leave_requests SET status = ?, faculty_comments = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND faculty_id = ?',
+    [status, comments || '', id, facultyId],
+    function(err) {
+      if (err) {
+        console.error('Update leave request error:', err);
+        return res.status(500).json({ error: 'Failed to update leave request' });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Leave request not found' });
+      }
+
+      res.json({
+        success: true,
+        message: `Leave request ${status} successfully`
+      });
+    }
+  );
+});
+
+// Get student's leave requests
+app.get('/api/student/leave-requests', authenticateToken, (req, res) => {
+  if (req.user.type !== 'student') {
+    return res.status(403).json({ error: 'Student access required' });
+  }
+
+  const studentId = req.user.userId;
+
+  const query = `
+    SELECT 
+      lr.*,
+      f.name as faculty_name
+    FROM leave_requests lr
+    JOIN faculty f ON lr.faculty_id = f.faculty_id
+    WHERE lr.student_id = ?
+    ORDER BY lr.created_at DESC
+  `;
+
+  db.all(query, [studentId], (err, requests) => {
+    if (err) {
+      console.error('Get student leave requests error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    res.json({
+      success: true,
+      requests: requests || []
+    });
+  });
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
@@ -2325,5 +2739,55 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('Students: alice@test.com / student123\n');
 
   // Create default users after server starts
-  setTimeout(createDefaultUsers, 1000);
+  setTimeout(() => {
+    createDefaultUsers();
+    
+    // Add phone numbers to students
+    setTimeout(() => {
+      const studentPhones = [
+        ['alice@test.com', '9876543210'],
+        ['smith@test.com', '9876543211'], 
+        ['krishnaraj@test.com', '9699588803'], // Your actual number
+        ['pratik@test.com', '9876543213'],
+        ['bob@test.com', '9876543214'],
+        ['carol@test.com', '9876543215'],
+        ['david@test.com', '9876543216'],
+        ['eva@test.com', '9876543217']
+      ];
+
+      // Add phone column if not exists
+      db.run(`ALTER TABLE students ADD COLUMN phone TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column')) {
+          console.log('Phone column already exists or error:', err.message);
+        }
+        
+        // Update phone numbers
+        studentPhones.forEach(([email, phone]) => {
+          db.run(`UPDATE students SET phone = ? WHERE email = ?`, [phone, email], (updateErr) => {
+            if (!updateErr) {
+              console.log(`📱 Phone ${phone} added for ${email}`);
+            }
+          });
+        });
+      });
+      
+      console.log('📱 WhatsApp notifications enabled for consecutive absences!');
+      
+      // Force enroll Krishnaraj in ALL subjects
+      const allSubjects = ['Computer Science 101', 'Mathematics 201', 'Physics 301', 'Chemistry 101', 'Biology 201'];
+      allSubjects.forEach(subject => {
+        db.run(
+          'INSERT OR IGNORE INTO student_subjects (student_id, subject, faculty_id) VALUES (?, ?, ?)',
+          ['STU003', subject, 'faculty001'],
+          function(err) {
+            if (!err && this.changes > 0) {
+              console.log(`📚 Krishnaraj enrolled in ${subject}`);
+            }
+          }
+        );
+      });
+    }, 2000);
+  }, 1000);
+  
+
 });

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://unpkg.com/html5-qrcode" defer></script>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="test-ai-demo.js"></script>
   <style>
     /* Compact Header Section */
     .student-header {
@@ -980,6 +981,116 @@
       color: var(--text-color);
     }
 
+    /* Leave Request Styles */
+    .leave-section {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .leave-form-card {
+      margin-bottom: 2rem;
+      padding: 2rem;
+    }
+
+    .leave-history-card {
+      padding: 2rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .form-control {
+      padding: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 0.5rem;
+      color: var(--text-color);
+      font-size: 1rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    select.form-control {
+      background: rgba(31, 41, 55, 0.9) !important;
+      color: white !important;
+      cursor: pointer;
+    }
+
+    select.form-control option {
+      background: #1f2937 !important;
+      color: white !important;
+      padding: 0.75rem !important;
+      border: none !important;
+    }
+
+    select.form-control option:hover {
+      background: #374151 !important;
+      color: white !important;
+    }
+
+    select.form-control:focus {
+      background: rgba(31, 41, 55, 0.95) !important;
+      color: white !important;
+    }
+
+    .leave-item {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .leave-item.status-pending {
+      border-left-color: #f59e0b;
+    }
+
+    .leave-item.status-approved {
+      border-left-color: #10b981;
+    }
+
+    .leave-item.status-rejected {
+      border-left-color: #ef4444;
+    }
+
+    .leave-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .leave-details {
+      font-size: 0.9rem;
+      color: var(--gray-text);
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .qr-activity {
       cursor: pointer;
       transition: all 0.3s ease;
@@ -1121,6 +1232,9 @@
       </button>
       <button class="tab-btn" onclick="switchTab('history')">
         <i class="fas fa-history"></i> Attendance History
+      </button>
+      <button class="tab-btn" onclick="switchTab('leave')">
+        <i class="fas fa-calendar-times"></i> Leave Request
       </button>
     </div>
 
@@ -1328,6 +1442,83 @@
 
         <div id="coursesGrid" class="courses-grid">
           <!-- Courses will be populated here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Leave Request Tab -->
+    <div id="leaveTab" class="tab-content">
+      <div class="leave-section">
+        <div class="section-header">
+          <h2>Leave Request</h2>
+          <p>Submit leave requests and track their status</p>
+        </div>
+
+        <div class="leave-form-card glass-card">
+          <form id="leaveRequestForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="facultySelect">Faculty</label>
+                <select id="facultySelect" class="form-control" required>
+                  <option value="">Select Faculty</option>
+                  <option value="faculty001">Ashwini Mam</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="subjectSelect">Subject</label>
+                <select id="subjectSelect" class="form-control" required>
+                  <option value="">Select Subject</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="Physics">Physics</option>
+                  <option value="Chemistry">Chemistry</option>
+                  <option value="Computer Science">Computer Science</option>
+                  <option value="English">English</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="leaveDate">Leave Date</label>
+                <input type="date" id="leaveDate" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="reasonCategory">Reason Category</label>
+                <select id="reasonCategory" class="form-control" required>
+                  <option value="">Select Category</option>
+                  <option value="medical">Medical Emergency</option>
+                  <option value="family">Family Function</option>
+                  <option value="personal">Personal Work</option>
+                  <option value="transport">Transport Issue</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="reasonText">Detailed Reason</label>
+              <textarea id="reasonText" class="form-control" rows="3" placeholder="Please provide detailed reason for leave..." required></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 1rem; padding: 0.75rem 2rem; width: auto; display: inline-flex; align-items: center; gap: 0.5rem;">
+              <i class="fas fa-paper-plane"></i>
+              Submit Leave Request
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="createTestLeaveRequests()" style="margin-top: 0.5rem; padding: 0.75rem 2rem; width: auto; display: inline-flex; align-items: center; gap: 0.5rem;">
+              <i class="fas fa-robot"></i>
+              🤖 Test AI Analysis
+            </button>
+          </form>
+        </div>
+
+        <div class="leave-history-card glass-card">
+          <h3><i class="fas fa-history"></i> Leave Request History</h3>
+          <div id="leaveHistory">
+            <div class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              Loading history...
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1559,6 +1750,7 @@
       if (tabName === 'profile') loadProfileData();
       if (tabName === 'courses') loadCoursesData();
       if (tabName === 'history') loadHistoryData();
+      if (tabName === 'leave') loadLeaveData();
     }
 
     // Load dashboard data
@@ -2277,6 +2469,144 @@
         updatePhotoUI(null);
       });
     }
+
+    // Leave management functions
+    function loadLeaveData() {
+      // Set minimum date to today
+      document.getElementById('leaveDate').min = new Date().toISOString().split('T')[0];
+      
+      // Load subjects from courses
+      loadSubjectsForLeave();
+      loadLeaveHistory();
+    }
+
+    function loadSubjectsForLeave() {
+      fetch('/api/student/courses', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const subjectSelect = document.getElementById('subjectSelect');
+          subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+          
+          data.courses.forEach(course => {
+            subjectSelect.innerHTML += `<option value="${course.subject}">${course.subject}</option>`;
+          });
+        }
+      })
+      .catch(error => console.error('Error loading subjects:', error));
+    }
+
+    async function submitLeaveRequest(e) {
+      e.preventDefault();
+      
+      const formData = {
+        facultyId: document.getElementById('facultySelect').value,
+        subject: document.getElementById('subjectSelect').value,
+        leaveDate: document.getElementById('leaveDate').value,
+        reasonCategory: document.getElementById('reasonCategory').value,
+        reasonText: document.getElementById('reasonText').value
+      };
+
+      try {
+        const response = await fetch('/api/student/leave-request', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          },
+          body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          let message = 'Leave request submitted successfully!';
+          
+          // Show AI analysis if available
+          if (data.aiAnalysis) {
+            message += `\n\n🤖 AI Analysis:\n• Credibility Score: ${data.aiAnalysis.credibilityScore}/100\n• Risk Level: ${data.aiAnalysis.riskLevel.toUpperCase()}`;
+            
+            if (data.aiAnalysis.flags && data.aiAnalysis.flags.length > 0) {
+              message += `\n• Flags: ${data.aiAnalysis.flags.map(f => f.message).join(', ')}`;
+            }
+          }
+          
+          showNotification(message, 'success');
+          document.getElementById('leaveRequestForm').reset();
+          loadLeaveHistory();
+        } else {
+          showNotification('Error: ' + data.error, 'error');
+        }
+      } catch (error) {
+        console.error('Submit error:', error);
+        showNotification('Failed to submit leave request', 'error');
+      }
+    }
+
+    async function loadLeaveHistory() {
+      try {
+        const response = await fetch('/api/student/leave-requests', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          displayLeaveHistory(data.requests);
+        }
+      } catch (error) {
+        console.error('Load history error:', error);
+        document.getElementById('leaveHistory').innerHTML = '<p>Failed to load history</p>';
+      }
+    }
+
+    function displayLeaveHistory(requests) {
+      const historyDiv = document.getElementById('leaveHistory');
+      
+      if (requests.length === 0) {
+        historyDiv.innerHTML = '<p style="text-align: center; color: var(--gray-text); padding: 2rem;">No leave requests found</p>';
+        return;
+      }
+
+      historyDiv.innerHTML = requests.map(request => {
+        let aiAnalysis = null;
+        if (request.ai_recommendation) {
+          try {
+            aiAnalysis = JSON.parse(request.ai_recommendation);
+          } catch (e) {}
+        }
+        
+        return `
+        <div class="leave-item status-${request.status}">
+          <div class="leave-header">
+            <div>
+              <strong>${request.subject}</strong> - ${request.faculty_name}
+              <br>
+              <small>Date: ${new Date(request.leave_date).toLocaleDateString()}</small>
+              ${aiAnalysis ? `<br><small style="color: #60a5fa;">🤖 AI Score: ${aiAnalysis.credibilityScore}/100 (${aiAnalysis.riskLevel} risk)</small>` : ''}
+            </div>
+            <div>
+              <span class="status-badge status-${request.status}">${request.status.toUpperCase()}</span>
+            </div>
+          </div>
+          <div class="leave-details">
+            <strong>Reason:</strong> ${request.reason_text}
+            ${request.faculty_comments ? `<br><strong>Faculty Comments:</strong> ${request.faculty_comments}` : ''}
+            ${aiAnalysis && aiAnalysis.recommendations && aiAnalysis.recommendations[0] ? `<br><small style="color: #94a3b8;">🤖 AI Recommendation: ${aiAnalysis.recommendations[0].action.toUpperCase()}</small>` : ''}
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+
+    // Add form submit listener
+    document.getElementById('leaveRequestForm').addEventListener('submit', submitLeaveRequest);
 
     // Update loadProfileData to also load photo and face status
     const originalLoadProfileData = loadProfileData;

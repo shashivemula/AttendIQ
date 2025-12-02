@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Request - AttendIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="css/style.css" rel="stylesheet">
+    <style>
+        .leave-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--light-text);
+        }
+        .form-control {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            color: var(--light-text);
+            font-size: 1rem;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(120, 119, 198, 0.2);
+        }
+        .btn-submit {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        .leave-history {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .leave-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary-color);
+        }
+        .status-pending { border-left-color: #f59e0b; }
+        .status-approved { border-left-color: #10b981; }
+        .status-rejected { border-left-color: #ef4444; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>AttendIQ Student</span>
+            </div>
+            <div class="nav-menu">
+                <a href="student-dashboard.html" class="nav-link">Dashboard</a>
+                <a href="student-leave-request.html" class="nav-link active">Leave Request</a>
+                <button class="nav-link btn-login" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="leave-container">
+            <h1 class="gradient-title">
+                <i class="fas fa-calendar-times"></i>
+                Leave Request
+            </h1>
+            <p class="subtitle">Submit a leave request for faculty approval</p>
+
+            <form id="leaveRequestForm">
+                <div class="form-group">
+                    <label for="facultySelect">Faculty</label>
+                    <select id="facultySelect" class="form-control" required>
+                        <option value="">Select Faculty</option>
+                        <option value="faculty001">Dr. John Smith</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="subjectSelect">Subject</label>
+                    <select id="subjectSelect" class="form-control" required>
+                        <option value="">Select Subject</option>
+                        <option value="Computer Science 101">Computer Science 101</option>
+                        <option value="Mathematics 201">Mathematics 201</option>
+                        <option value="Physics 301">Physics 301</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="leaveDate">Leave Date</label>
+                    <input type="date" id="leaveDate" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reasonCategory">Reason Category</label>
+                    <select id="reasonCategory" class="form-control" required>
+                        <option value="">Select Category</option>
+                        <option value="medical">Medical Emergency</option>
+                        <option value="family">Family Function</option>
+                        <option value="personal">Personal Work</option>
+                        <option value="transport">Transport Issue</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="reasonText">Detailed Reason</label>
+                    <textarea id="reasonText" class="form-control" rows="4" placeholder="Please provide detailed reason for leave..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-paper-plane"></i>
+                    Submit Leave Request
+                </button>
+            </form>
+
+            <div class="leave-history">
+                <h3><i class="fas fa-history"></i> Leave Request History</h3>
+                <div id="leaveHistory">
+                    <div class="text-center">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        Loading history...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let jwtToken = localStorage.getItem('authToken');
+        const API_BASE = 'http://localhost:5000';
+
+        if (!jwtToken) {
+            window.location.href = 'login.html';
+        }
+
+        // Set minimum date to today
+        document.getElementById('leaveDate').min = new Date().toISOString().split('T')[0];
+
+        // Submit leave request
+        document.getElementById('leaveRequestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                facultyId: document.getElementById('facultySelect').value,
+                subject: document.getElementById('subjectSelect').value,
+                leaveDate: document.getElementById('leaveDate').value,
+                reasonCategory: document.getElementById('reasonCategory').value,
+                reasonText: document.getElementById('reasonText').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/student/leave-request`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Leave request submitted successfully!');
+                    document.getElementById('leaveRequestForm').reset();
+                    loadLeaveHistory();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                alert('Failed to submit leave request');
+            }
+        });
+
+        // Load leave history
+        async function loadLeaveHistory() {
+            try {
+                const response = await fetch(`${API_BASE}/api/student/leave-requests`, {
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayLeaveHistory(data.requests);
+                }
+            } catch (error) {
+                console.error('Load history error:', error);
+                document.getElementById('leaveHistory').innerHTML = '<p>Failed to load history</p>';
+            }
+        }
+
+        function displayLeaveHistory(requests) {
+            const historyDiv = document.getElementById('leaveHistory');
+            
+            if (requests.length === 0) {
+                historyDiv.innerHTML = '<p>No leave requests found</p>';
+                return;
+            }
+
+            historyDiv.innerHTML = requests.map(request => `
+                <div class="leave-item status-${request.status}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${request.subject}</strong> - ${request.faculty_name}
+                            <br>
+                            <small>Date: ${new Date(request.leave_date).toLocaleDateString()}</small>
+                        </div>
+                        <div>
+                            <span class="status-badge status-${request.status}">${request.status.toUpperCase()}</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <strong>Reason:</strong> ${request.reason_text}
+                        ${request.faculty_comments ? `<br><strong>Faculty Comments:</strong> ${request.faculty_comments}` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // Load data on page load
+        loadFacultyAndSubjects();
+        loadLeaveHistory();
+
+        // Load faculty and subjects dynamically
+        async function loadFacultyAndSubjects() {
+            try {
+                // Load faculty list
+                const facultyResponse = await fetch(`${API_BASE}/api/faculty/list`, {
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`
+                    }
+                });
+
+                if (facultyResponse.ok) {
+                    const facultyData = await facultyResponse.json();
+                    const facultySelect = document.getElementById('facultySelect');
+                    
+                    // Clear existing options except the first one
+                    facultySelect.innerHTML = '<option value="">Select Faculty</option>';
+                    
+                    if (facultyData.success && facultyData.faculty) {
+                        facultyData.faculty.forEach(faculty => {
+                            const option = document.createElement('option');
+                            option.value = faculty.faculty_id;
+                            option.textContent = faculty.name;
+                            facultySelect.appendChild(option);
+                        });
+                    }
+                }
+
+                // Load student's enrolled subjects
+                const coursesResponse = await fetch(`${API_BASE}/api/student/courses`, {
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`
+                    }
+                });
+
+                if (coursesResponse.ok) {
+                    const coursesData = await coursesResponse.json();
+                    const subjectSelect = document.getElementById('subjectSelect');
+                    
+                    // Clear existing options except the first one
+                    subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+                    
+                    if (coursesData.success && coursesData.courses) {
+                        coursesData.courses.forEach(course => {
+                            const option = document.createElement('option');
+                            option.value = course.subject;
+                            option.textContent = course.subject;
+                            subjectSelect.appendChild(option);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading faculty and subjects:', error);
+                // Keep the hardcoded options as fallback
+            }
+        }
+    </script>
+</body>
+</html>
